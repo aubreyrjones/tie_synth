@@ -165,23 +165,6 @@ private:
     CBType callback_;
 };
 
-// An event that's specialized with a (static) member function of class T,
-// and a dynamic instance of T. Event execution causes an invocation of the
-// member function on the instance.
-template<typename T, void(T::*MFun)() >
-class MemberTimerEvent : public TimerEventInterface {
-public:
-    MemberTimerEvent(T* obj) : obj_(obj) {
-    }
-
-    virtual void execute () {
-        (obj_->*MFun)();
-    }
-
-private:
-    T* obj_;
-};
-
 // Purely an implementation detail.
 class TimerWheelSlot {
 public:
