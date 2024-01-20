@@ -1,0 +1,1 @@
+`gui_gen.icc` is the output of the GUI audio design tool.

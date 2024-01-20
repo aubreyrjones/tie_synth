@@ -1,0 +1,16 @@
+#include <Arduino.h>
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+
+// GUItool: begin automatically generated code
+AudioInputI2S            i2s1;           //xy=591.3333129882812,292.3333435058594
+AudioSynthWaveformSine   sine1;          //xy=902.3333129882812,366.33331298828125
+AudioOutputI2S           i2s2;           //xy=1224.3333282470703,359.3333282470703
+AudioConnection          patchCord1(sine1, 0, i2s2, 0);
+AudioConnection          patchCord2(sine1, 0, i2s2, 1);
+AudioControlSGTL5000     sgtl5000_1;     //xy=110.33332824707031,58.333335876464844
+// GUItool: end automatically generated code
+
