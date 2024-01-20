@@ -1,0 +1,1 @@
+As the processing requirements are trivial, the IO panel is coded in CircuitPython for the Raspberry Pi Pico W.
