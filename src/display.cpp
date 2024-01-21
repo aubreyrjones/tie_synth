@@ -8,7 +8,7 @@ Adafruit_SSD1351 main_oled = Adafruit_SSD1351(
 // scope display
 //U8G2_SH1106_128X64_NONAME_F_4W_HW_SPI
 U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI 
-    scope_oled(U8G2_MIRROR_VERTICAL, 10, 17, 16);
+    scope_oled(U8G2_R0, 10, 17, 16);
 
 void initialize_oleds() {
   SPI1.setCS(CS_PIN);
@@ -30,5 +30,6 @@ void initialize_oleds() {
   scope_oled.drawStr(8, 24, "Greetings");
   scope_oled.drawStr(30, 60, "Operator!");
   scope_oled.sendBuffer();
+  delay(1000);
 }
 } // namespace display
