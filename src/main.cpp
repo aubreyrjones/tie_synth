@@ -23,7 +23,7 @@ struct FastMIDIBaud {
 MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7);
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
 
-Metro scopeRepaint(33);
+Metro scopeRepaint(40);
 
 float curFreq = 440.f;
 float curAmp = 1.f;
@@ -84,6 +84,7 @@ void loop() {
   }
 
   if (scopeRepaint.check()) {
+    scopeRepaint.reset();
     scope_oled.clearBuffer();
     for (int i = 0; i < 128; i++) {
       float s = scopeTap.lastFrame[i] / 65536.f;
@@ -97,6 +98,5 @@ void loop() {
       }
     }
     scope_oled.sendBuffer();
-    scopeRepaint.reset();
   }
 }
