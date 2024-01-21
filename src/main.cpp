@@ -16,15 +16,14 @@ const uint16_t WHITE = 0xFFFF;
 
 // Displays
 
-struct FastMIDIBaud
-{
-    static const long BaudRate = 1000000;
+struct FastMIDIBaud {
+  static const long BaudRate = 1000000;
 };
 
 MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7);
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
 
-Metro scopeRepaint(16);
+Metro scopeRepaint(33);
 
 float curFreq = 440.f;
 float curAmp = 1.f;
@@ -33,9 +32,9 @@ void setup() {
   AudioMemory(12);
   randomSeed(analogRead(0));
 
-  Serial.begin(38400); // terminal with computer
+  Serial.begin(38400);                  // terminal with computer
   serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it out ourselves.
-  
+
   // Set up sound chips.
   sgtl5000_1.setAddress(LOW);
   sgtl5000_1.enable();
@@ -63,33 +62,45 @@ void loop() {
     }
 
     if (serial_midi.getData1() == 1) {
-      if (serial_midi.getData2() > 50) {
+      if (serial_midi.getData2() > 50)
+      {
         sine1.frequency(curFreq += 20.f);
       }
-      else {
+      else
+      {
         sine1.frequency(curFreq -= 20.f);
       }
     }
 
     if (serial_midi.getData1() == 2) {
-      if (serial_midi.getData2() > 50) {
+      if (serial_midi.getData2() > 50)
+      {
         sine1.amplitude(curAmp += 0.05f);
       }
-      else {
+      else
+      {
         sine1.amplitude(curAmp -= 0.05f);
       }
     }
   }
 
   if (scopeRepaint.check()) {
-  scope_oled.clearBuffer();
-  for (int i = 0; i < 128; i++) {
-    float s = scopeTap.lastFrame[i] / 65536.f + 0.5f;
-    u8g2_uint_t height = s * 64;
-    scope_oled.drawVLine(i, 0, height);
+    scope_oled.clearBuffer();
+    for (int i = 0; i < 128; i++) {
+      float s = scopeTap.lastFrame[i] / 65536.f;
+      u8g2_uint_t height = abs(s) * 64;
+      if (s > 0)
+      {
+        // scope_oled.drawVLine(i, 31, height);
+        scope_oled.drawPixel(i, 31 + height);
+      }
+      else
+      {
+        // scope_oled.drawVLine(i, 31 - height, height);
+        scope_oled.drawPixel(i, 31 - height);
+      }
+    }
+    scope_oled.sendBuffer();
+    scopeRepaint.reset();
   }
-  scope_oled.sendBuffer();
-  scopeRepaint.reset();
-  }
-  
 }
