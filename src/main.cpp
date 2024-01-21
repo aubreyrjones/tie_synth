@@ -1,13 +1,13 @@
-#include "audio/gui_gen.icc"
 #include "audio/ScopeTap.h"
+#include "audio/gui_gen.icc"
 
 AudioAnalyzeScope scopeTap;
 
 AudioConnection patchCord_0(sine1, 0, scopeTap, 0);
 
-#include <Metro.h>
-#include <MIDI.h>
 #include "display.h"
+#include <MIDI.h>
+#include <Metro.h>
 
 constexpr float hw_output_volume = 0.5f;
 
@@ -33,7 +33,8 @@ void setup() {
   randomSeed(analogRead(0));
 
   Serial.begin(38400);                  // terminal with computer
-  serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it out ourselves.
+  serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it
+                                        // out ourselves.
 
   // Set up sound chips.
   sgtl5000_1.setAddress(LOW);
@@ -56,31 +57,29 @@ void loop() {
     main_oled.print(" ");
     if (serial_midi.getData2()) {
       main_oled.print("+");
-    }
-    else {
+    } else {
       main_oled.print("-");
     }
 
     if (serial_midi.getData1() == 1) {
-      if (serial_midi.getData2() > 50)
-      {
-        sine1.frequency(curFreq += 20.f);
+      auto incr = serial_midi.getData2() > 50 ? 20.f : -20.f;
+      curFreq += incr;
+      if (curFreq <= 0) {
+        curFreq = 2;
       }
-      else
-      {
-        sine1.frequency(curFreq -= 20.f);
-      }
+      sine1.frequency(curFreq);
     }
 
     if (serial_midi.getData1() == 2) {
-      if (serial_midi.getData2() > 50)
-      {
-        sine1.amplitude(curAmp += 0.05f);
+      auto incr = serial_midi.getData2() > 50 ? 0.05f : -0.05f;
+      curAmp += incr;
+      if (curAmp <= 0.05f) {
+        curAmp = 0.05f;
       }
-      else
-      {
-        sine1.amplitude(curAmp -= 0.05f);
+      else if (curAmp > 1.f) {
+        curAmp = 1.f;
       }
+      sine1.amplitude(curAmp);
     }
   }
 
@@ -89,13 +88,10 @@ void loop() {
     for (int i = 0; i < 128; i++) {
       float s = scopeTap.lastFrame[i] / 65536.f;
       u8g2_uint_t height = abs(s) * 64;
-      if (s > 0)
-      {
+      if (s > 0) {
         // scope_oled.drawVLine(i, 31, height);
         scope_oled.drawPixel(i, 31 + height);
-      }
-      else
-      {
+      } else {
         // scope_oled.drawVLine(i, 31 - height, height);
         scope_oled.drawPixel(i, 31 - height);
       }
