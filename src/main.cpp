@@ -1,5 +1,11 @@
 #include "audio/gui_gen.icc"
+#include "audio/ScopeTap.h"
 
+AudioAnalyzeScope scopeTap;
+
+AudioConnection patchCord_0(sine1, 0, scopeTap, 0);
+
+#include <Metro.h>
 #include <MIDI.h>
 #include "display.h"
 
@@ -18,6 +24,11 @@ struct FastMIDIBaud
 MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7);
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
 
+Metro scopeRepaint(16);
+
+float curFreq = 440.f;
+float curAmp = 1.f;
+
 void setup() {
   AudioMemory(12);
   randomSeed(analogRead(0));
@@ -31,8 +42,8 @@ void setup() {
   sgtl5000_1.inputSelect(AUDIO_INPUT_LINEIN);
   sgtl5000_1.volume(hw_output_volume);
 
-  sine1.frequency(440);
-  sine1.amplitude(0.5f);
+  sine1.frequency(curFreq);
+  sine1.amplitude(curAmp);
 
   display::initialize_oleds();
 }
@@ -50,13 +61,35 @@ void loop() {
     else {
       main_oled.print("-");
     }
+
+    if (serial_midi.getData1() == 1) {
+      if (serial_midi.getData2() > 50) {
+        sine1.frequency(curFreq += 20.f);
+      }
+      else {
+        sine1.frequency(curFreq -= 20.f);
+      }
+    }
+
+    if (serial_midi.getData1() == 2) {
+      if (serial_midi.getData2() > 50) {
+        sine1.amplitude(curAmp += 0.05f);
+      }
+      else {
+        sine1.amplitude(curAmp -= 0.05f);
+      }
+    }
   }
 
+  if (scopeRepaint.check()) {
   scope_oled.clearBuffer();
   for (int i = 0; i < 128; i++) {
-    auto height = random(10, 58);
+    float s = scopeTap.lastFrame[i] / 65536.f + 0.5f;
+    u8g2_uint_t height = s * 64;
     scope_oled.drawVLine(i, 0, height);
   }
   scope_oled.sendBuffer();
+  scopeRepaint.reset();
+  }
   
 }
