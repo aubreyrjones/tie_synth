@@ -8,6 +8,7 @@ AudioConnection patchCord_0(sine1, 0, scopeTap, 0);
 #include "display.h"
 #include <MIDI.h>
 #include <Metro.h>
+#include "gui/screen.hpp"
 
 constexpr float hw_output_volume = 0.5f;
 
@@ -22,8 +23,6 @@ struct FastMIDIBaud {
 
 MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7);
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
-
-Metro scopeRepaint(40);
 
 float curFreq = 440.f;
 float curAmp = 1.f;
@@ -48,9 +47,31 @@ void setup() {
   display::initialize_oleds();
 }
 
+
+Metro blankTimeout(60000); // 1 minute screen sleep timer
+Metro scopeRepaint(40); // 25fps
+
+bool blankMode = false;
+
 void loop() {
   using namespace display;
-  if (serial_midi.read()) {
+
+  bool has_midi_input = serial_midi.read();
+  if (has_midi_input) {
+    blankTimeout.reset();
+    blankMode = false;
+  }
+
+  if (blankTimeout.check() || blankMode) {
+    blankMode = true;
+    main_oled.fillScreen(0);
+    scope_oled.clearDisplay();
+    return;
+  }
+
+  gui::activeScreen->draw();
+
+  if (has_midi_input) {
     main_oled.setCursor(40, 50);
     main_oled.setTextColor(WHITE, 0);
     main_oled.print(serial_midi.getData1(), DEC);
