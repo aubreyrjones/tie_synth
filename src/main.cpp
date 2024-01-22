@@ -47,6 +47,46 @@ void setup() {
   display::initialize_oleds();
 }
 
+gui::WidgetInput cc_to_input_event(midi::DataByte const& cc, midi::DataByte const& val) {
+  if (cc == 1) {
+    if (val) {
+      return gui::WidgetInput::RIGHT_INCR;
+    }
+    else {
+      return gui::WidgetInput::RIGHT_DECR;
+    }
+  }
+
+  if (cc == 2) {
+    if (val) {
+      return gui::WidgetInput::LEFT_INCR;
+    }
+    else {
+      return gui::WidgetInput::LEFT_DECR;
+    }
+  }
+
+  if (cc == 8) {
+    if (val) {
+      return gui::WidgetInput::RIGHT_PUSH;
+    }
+    else {
+      return gui::WidgetInput::RIGHT_REL;
+    }
+  }
+
+  if (cc == 9) {
+    if (val) {
+      return gui::WidgetInput::LEFT_PUSH;
+    }
+    else {
+      return gui::WidgetInput::LEFT_REL;
+    }
+  }
+
+  return gui::WidgetInput::NULL_INPUT;
+}
+
 
 Metro blankTimeout(60000); // 1 minute screen sleep timer
 Metro scopeRepaint(40); // 25fps
@@ -64,45 +104,31 @@ void loop() {
 
   if (blankTimeout.check() || blankMode) {
     blankMode = true;
+    gui::activeScreen->sully(); // so it'll repaint next time.
     main_oled.fillScreen(0);
     scope_oled.clearDisplay();
     return;
   }
 
-  gui::activeScreen->draw();
-
-  if (has_midi_input) {
-    main_oled.setCursor(40, 50);
-    main_oled.setTextColor(WHITE, 0);
-    main_oled.print(serial_midi.getData1(), DEC);
-    main_oled.print(" ");
-    if (serial_midi.getData2()) {
-      main_oled.print("+");
-    } else {
-      main_oled.print("-");
+  if (has_midi_input && serial_midi.getChannel() == 16) {
+    auto cc = serial_midi.getData1();
+    auto signal = serial_midi.getData2();
+    
+    if (cc == 0) {
+      if (signal) { // positive increment
+        gui::activeScreen->nextWidget();
+      }
+      else {
+        gui::activeScreen->prevWidget();
+      }
     }
-
-    if (serial_midi.getData1() == 1) {
-      auto incr = serial_midi.getData2() > 50 ? 20.f : -20.f;
-      curFreq += incr;
-      if (curFreq <= 0) {
-        curFreq = 2;
-      }
-      sine1.frequency(curFreq);
-    }
-
-    if (serial_midi.getData1() == 2) {
-      auto incr = serial_midi.getData2() > 50 ? 0.05f : -0.05f;
-      curAmp += incr;
-      if (curAmp <= 0.05f) {
-        curAmp = 0.05f;
-      }
-      else if (curAmp > 1.f) {
-        curAmp = 1.f;
-      }
-      sine1.amplitude(curAmp);
+    else if (cc == 1 || cc == 2 || cc == 8 || cc == 9) {
+      gui::activeScreen->handleInput(cc_to_input_event(cc, signal));
     }
   }
+
+  gui::activeScreen->draw();
+
 
   if (scopeRepaint.check()) {
     scopeRepaint.reset();
