@@ -116,13 +116,16 @@ public:
         main_oled.setCursor(em::center(aLabelWidth, 64), topline);
         main_oled.print(aLabel);
 
-        main_oled.setCursor(em::center(18, 64), botline);
+        main_oled.setCursor(2 + 4, botline);
+        //main_oled.print("\x10 ");
         main_oled.print(aVal);
         
         main_oled.setCursor(64 + em::center(bLabelWidth, 64), topline);
         main_oled.print(bLabel);
 
-        main_oled.setCursor(64 + em::center(18, 64), botline);
+        //main_oled.setCursor(64 + 2 + 4 , botline);
+        main_oled.setCursor(64 - 9, botline);
+        main_oled.print("\x11 \x10 ");
         main_oled.print(bVal);
 
         //main_oled.drawFastVLine(64, topLeft.y, height(), fg); // kinda hate how this looks.
