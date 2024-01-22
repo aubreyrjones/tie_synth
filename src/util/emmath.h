@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+using byte = uint8_t;
+
 namespace em {
 template <typename T = int>
 class range {
