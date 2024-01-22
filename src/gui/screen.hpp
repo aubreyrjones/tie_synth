@@ -119,6 +119,7 @@ public:
 
         main_oled.setCursor(2, botline);
         main_oled.print("\xc0");
+        main_oled.setCursor(2 + 6, botline + 1);
         main_oled.print(aVal);
         
         main_oled.setCursor(64 + 2, topline);
@@ -127,6 +128,7 @@ public:
 
         main_oled.setCursor(64 + 2, botline);
         main_oled.print("\xc0");
+        main_oled.setCursor(64 + 2 + 6, botline + 1);
         main_oled.print(bVal);
 
         //main_oled.drawFastVLine(64, topLeft.y, height(), fg); // kinda hate how this looks.
