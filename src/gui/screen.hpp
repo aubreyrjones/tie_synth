@@ -50,7 +50,7 @@ public:
 };
 
 /**
- * Display two numerical byte controls with labels.
+ * Display two numerical controls with labels. They must be of the same type.
 */
 template <typename VALTYPE>
 class DualNumericalWidget : public Widget {
@@ -158,7 +158,6 @@ public:
             break;
         }
     }
-
 };
 
 /**
@@ -182,8 +181,6 @@ public:
     void sully() { dirty = true; }
 
     /// @brief Is the given widget currently focused?
-    /// @param w 
-    /// @return 
     bool focused(Widget const& w) { return focusedWidget == &w; }
     
     /// @brief Scroll to the next widget.
@@ -195,6 +192,7 @@ public:
         }
     }
 
+    /// @brief Scroll to the previous widget.
     void prevWidget() {
         if (focusedWidget->prev) {
             focusedWidget->draw(false);
@@ -203,6 +201,7 @@ public:
         }
     }
 
+    /// @brief Pass inputs to the focused widget.
     virtual void handleInput(WidgetInput const& event) {
         if (focusedWidget) {
             focusedWidget->handleInput(event);
