@@ -2,6 +2,8 @@
 #include "../display.h"
 #include "../util/emmath.h"
 #include "colors.hpp"
+#include <tuple>
+#include <functional>
 
 namespace gui {
 
@@ -47,29 +49,50 @@ public:
     Widget *prev = nullptr, *next = nullptr;
 };
 
-
 /**
- * Display two numerical controls with labels.
+ * Display two numerical byte controls with labels.
 */
-template <typename VAL_TYPE>
+template <typename VALTYPE>
 class DualNumericalWidget : public Widget {
 public:
-    using valtype = VAL_TYPE;
+    using valtype = VALTYPE;
+    using incr_func = std::function<valtype(const valtype)>;
+
+    static valtype _default_incr(const valtype) { return 1; }
 
 protected:
   const char *aLabel, *bLabel;
   valtype aVal, bVal;
+  std::tuple<valtype, valtype> aLimits{0, 127}, bLimits{0, 127};
+  incr_func aIncr = _default_incr, bIncr = _default_incr;
 
   int aLabelWidth = 0, bLabelWidth = 0;
+  valtype aIncrScale = 1, bIncrScale = 1;
 
 public:
     DualNumericalWidget(const char *aLabel, const char *bLabel, valtype a, valtype b)
         : Widget(), aLabel(aLabel), bLabel(bLabel), aVal(a), bVal(b) {
-            aLabelWidth = strlen(aLabel) * 8;
-            bLabelWidth = strlen(bLabel) * 8;
-        }
+            aLabelWidth = strlen(aLabel) * 6;
+            bLabelWidth = strlen(bLabel) * 6;
+    }
 
-    virtual int height() { return 12; }
+    virtual int height() { 
+        return 16 + // two lines of characters
+        1 + // spacing between
+        2 + // padding
+        2; // border
+    }
+
+    /// @brief Set the numerical limits for the values.
+    void setLimits(valtype aLow, valtype aHigh, valtype bLow, valtype bHigh) {
+        aLimits = std::make_tuple(aLow, aHigh);
+        bLimits = std::make_tuple(bLow, bHigh);
+    }
+
+    void setIncrements(incr_func a, incr_func b) {
+        aIncr = a; 
+        bIncr = b;
+    }
 
     void draw(bool focused) override {
         using namespace display;
@@ -78,49 +101,58 @@ public:
         auto bg = focused ? colors::white : colors::black;
         auto fg = focused ? colors::black : colors::white;
 
-        main_oled.fillRect(topLeft.x, topLeft.y, 128, 12, bg);
+        main_oled.fillRect(topLeft.x, topLeft.y, 128, height(), bg);
 
         if (!focused) {
-            main_oled.drawRect(topLeft.x, topLeft.y, 128, 12, fg);
+            main_oled.drawRect(topLeft.x, topLeft.y, 128, height(), fg);
         }
-        else {
-            main_oled.drawRect(topLeft.x, topLeft.y, 128, 12, bg);
-        }
-
         
         main_oled.setTextSize(1);
         main_oled.setTextColor(fg, bg);
 
+        const auto topline = topLeft.y + 2;
+        const auto botline = topline + 8 + 1;
 
-        main_oled.setCursor(2, topLeft.y + 2);
+        main_oled.setCursor(em::center(aLabelWidth, 64), topline);
         main_oled.print(aLabel);
-        main_oled.print(":");
 
-        main_oled.setCursor(64 - 24, topLeft.y + 2);
-        main_oled.print(aVal, DEC);
+        main_oled.setCursor(em::center(18, 64), botline);
+        main_oled.print(aVal);
         
-        main_oled.setCursor(64, topLeft.y + 2);
+        main_oled.setCursor(64 + em::center(bLabelWidth, 64), topline);
         main_oled.print(bLabel);
-        main_oled.print(":");
 
-        main_oled.setCursor(128 - 24, topLeft.y + 2);
-        main_oled.print(bVal, DEC);
+        main_oled.setCursor(64 + em::center(18, 64), botline);
+        main_oled.print(bVal);
+
+        //main_oled.drawFastVLine(64, topLeft.y, height(), fg); // kinda hate how this looks.
     }
-
 
     virtual void handleInput(WidgetInput event) {
         switch (event) {
         case WidgetInput::LEFT_DECR:
-            em::clamp_incr(0, aVal, 127, -1);
+            em::clamp_incr(std::get<0>(aLimits), aVal, std::get<1>(aLimits), aIncrScale * -aIncr(aVal));
             break;
         case WidgetInput::LEFT_INCR:
-            em::clamp_incr(0, aVal, 127, 1);
+            em::clamp_incr(std::get<0>(aLimits), aVal, std::get<1>(aLimits), aIncrScale * aIncr(aVal));
             break;
         case WidgetInput::RIGHT_DECR:
-            em::clamp_incr(0, bVal, 127, -1);
+            em::clamp_incr(std::get<0>(bLimits), bVal, std::get<1>(bLimits), bIncrScale * -bIncr(bVal));
             break;
         case WidgetInput::RIGHT_INCR:
-            em::clamp_incr(0, bVal, 127, 1);
+            em::clamp_incr(std::get<0>(bLimits), bVal, std::get<1>(bLimits), bIncrScale * bIncr(bVal));
+            break;
+        case WidgetInput::LEFT_PUSH:
+            aIncrScale = 10;
+            break;
+        case WidgetInput::LEFT_REL:
+            aIncrScale = 1;
+            break;
+        case WidgetInput::RIGHT_PUSH:
+            bIncrScale = 10;
+            break;
+        case WidgetInput::RIGHT_REL:
+            bIncrScale = 1;
             break;
         default:
             break;

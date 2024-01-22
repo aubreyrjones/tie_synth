@@ -70,4 +70,8 @@ T& clamp_incr(L const& low, T & val, H const& high, I const& increment) {
     return val;
 }
 
+inline int center(int item, int space) {
+    return (space / 2) - (item / 2);
+}
+
 }
