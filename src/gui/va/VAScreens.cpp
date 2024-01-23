@@ -13,8 +13,6 @@ struct VAScreen : public Screen {
         auto start = 18;
         testAmpFreq.position({0, start});
 
-        testAmpFreq.setLimits(0.01, 1, 1, 20000);
-
         testAmpFreq.setIncrements(
             [](float v){ return 0.01f; },
             DualNumericalWidget<float>::_default_incr

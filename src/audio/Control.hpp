@@ -53,6 +53,27 @@ public:
     /// @brief Removes the dirty flag.
     void wash() { _dirty = false; }
 
+    /// @brief Add or subtract the given amount from the value, checking for under/overflow before calling set().
+    /// @param positive true if the delta should be added, false if the delta should be subtracted
+    /// @param delta the amount to change the value
+    void adjust(bool positive, valtype delta) {
+        valtype newVal = value;
+        if (positive) {
+            newVal += delta;
+        }
+        else {
+            newVal -= delta;
+        }
+        
+        if (positive && newVal < value) { // overflow
+            newVal = std::numeric_limits<valtype>::max();
+        }
+        else if (!positive && newVal > value) { // underflow
+            newVal = std::numeric_limits<valtype>::lowest();
+        }
+
+        set(newVal);
+    }
 
     /// @brief If dirty, run the update function with the current value and wash the control.
     void doUpdate() {

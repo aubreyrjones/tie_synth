@@ -64,8 +64,7 @@ public:
 
 protected:
   const char *aLabel, *bLabel;
-  valtype aVal, bVal;
-  std::tuple<valtype, valtype> aLimits{0, 127}, bLimits{0, 127};
+
   incr_func aIncr = _default_incr, bIncr = _default_incr; // increment functions
 
   audio::Control<valtype> *aControl = nullptr, *bControl = nullptr;
@@ -75,15 +74,8 @@ protected:
 
 public:
     explicit DualNumericalWidget(const char *aLabel, const char *bLabel, audio::Control<valtype> &aControl, audio::Control<valtype> &bControl)
-        : Widget(), aLabel(aLabel), bLabel(bLabel), aVal(*aControl), bVal(*bControl), aControl(&aControl), bControl(&bControl)
+        : Widget(), aLabel(aLabel), bLabel(bLabel), aControl(&aControl), bControl(&bControl)
     {
-        calcLabelLength();
-    }
-
-    DualNumericalWidget(const char *aLabel, const char *bLabel, valtype const& a, valtype const& b)
-        : Widget(), aLabel(aLabel), bLabel(bLabel), aVal(a), bVal(b)
-    {
-        
         calcLabelLength();
     }
 
@@ -97,12 +89,6 @@ public:
         1 + // spacing between
         2 + // padding
         2; // border
-    }
-
-    /// @brief Set the numerical limits for the values.
-    void setLimits(valtype aLow, valtype aHigh, valtype bLow, valtype bHigh) {
-        aLimits = std::make_tuple(aLow, aHigh);
-        bLimits = std::make_tuple(bLow, bHigh);
     }
 
     void setIncrements(incr_func a, incr_func b) {
@@ -151,46 +137,26 @@ public:
     }
 
     valtype const& a() {
-        if (aControl) return **aControl;
-        return aVal;
+        return **aControl;
     }
 
     valtype const& b() {
-        if (bControl) return **bControl;
-        return bVal;
-    }
-
-    void setA(valtype const& newValue) {
-        if (aControl) {
-            aControl->set(newValue);
-        }
-        else {
-            aVal = newValue;
-        }
-    }
-
-    void setB(valtype const& newValue) {
-        if (bControl) {
-            bControl->set(newValue);
-        }
-        else {
-            bVal = newValue;
-        }
+        return **bControl;
     }
 
     virtual void handleInput(WidgetInput event) {
         switch (event) {
         case WidgetInput::LEFT_DECR:
-            setA(em::clamp_incr(std::get<0>(aLimits), a(), std::get<1>(aLimits), aIncrScale * -aIncr(a())));
+            aControl->adjust(false, aIncrScale * aIncr(a()));
             break;
         case WidgetInput::LEFT_INCR:
-            setA(em::clamp_incr(std::get<0>(aLimits), a(), std::get<1>(aLimits), aIncrScale * aIncr(a())));
+            aControl->adjust(true, aIncrScale * aIncr(a()));
             break;
         case WidgetInput::RIGHT_DECR:
-            setB(em::clamp_incr(std::get<0>(bLimits), b(), std::get<1>(bLimits), bIncrScale * -bIncr(b())));
+            bControl->adjust(false, bIncrScale * bIncr(b()));
             break;
         case WidgetInput::RIGHT_INCR:
-            setB(em::clamp_incr(std::get<0>(bLimits), b(), std::get<1>(bLimits), bIncrScale * bIncr(b())));
+            bControl->adjust(true, bIncrScale * bIncr(b()));
             break;
         case WidgetInput::LEFT_PUSH:
             aIncrScale = 10;

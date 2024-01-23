@@ -10,23 +10,17 @@ class HomeScreen : public Screen {
     audio::Control<float> headphoneVolume {0.5f, {0.01, 1}, [](float vol) { } };
     audio::Control<float> lineoutVolume {0.5f, {0.01, 1}, [](float vol) { } };
 
+    audio::Control<byte> testControl1 {0, {0, 255}, [](byte) { } };
+    audio::Control<byte> testControl2 {0, {0, 127}, [](byte) { } };
+
     DualNumericalWidget<float> volumes;
     DualNumericalWidget<byte> something;
-    DualNumericalWidget<float> another;
-    DualNumericalWidget<float> one;
-    DualNumericalWidget<float> last;
 
 public:
     HomeScreen() : 
         volumes("Vol.HP", "Vol.Ln", headphoneVolume, lineoutVolume), 
-        something("Hi", "Katie", 0, 0), 
-        another("I \x03\x03\x03\x03\x03", "You!", 14.27, 127.78), 
-        one("A whole", "Bunch!", 13, 37),
-        last("Does this", "Fit?", 13, 37) {
+        something("Hi", "Katie", testControl1, testControl2){
         volumes.link(something);
-        something.link(another);
-        another.link(one);
-        one.link(last);
 
         focusedWidget = &volumes;
 
@@ -34,12 +28,6 @@ public:
         auto start = 18;
         volumes.position({0, start});
         something.position({0, start += volumes.height()});
-        another.position({0, start += something.height()});
-        one.position({0, start += another.height()});
-        last.position({0, start += one.height()});
-
-        another.setLimits(1, 20000, 1, 4000);
-        another.setIncrements(DualNumericalWidget<float>::_default_incr, [](float v){ return max(0.01f, logf(v) / 2.f); });
     }
 
     void draw() {
@@ -57,9 +45,6 @@ public:
 
         volumes.draw(focused(volumes));
         something.draw(focused(something));
-        another.draw(focused(another));
-        one.draw(focused(one));
-        last.draw(focused(last));
 
         dirty = false;
     }
