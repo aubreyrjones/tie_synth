@@ -28,6 +28,8 @@ public:
         auto start = 18;
         volumes.position({0, start});
         something.position({0, start += volumes.height()});
+
+        volumes.setIncrements([](float v){ return 0.01f; }, [](float v){ return 0.01f; });
     }
 
     void draw() {
