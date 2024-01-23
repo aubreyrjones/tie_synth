@@ -4,6 +4,7 @@
 #include "colors.hpp"
 #include <tuple>
 #include <functional>
+#include <audio/Control.hpp>
 
 namespace gui {
 
@@ -49,6 +50,7 @@ public:
     Widget *prev = nullptr, *next = nullptr;
 };
 
+
 /**
  * Display two numerical controls with labels. They must be of the same type.
 */
@@ -64,16 +66,30 @@ protected:
   const char *aLabel, *bLabel;
   valtype aVal, bVal;
   std::tuple<valtype, valtype> aLimits{0, 127}, bLimits{0, 127};
-  incr_func aIncr = _default_incr, bIncr = _default_incr;
+  incr_func aIncr = _default_incr, bIncr = _default_incr; // increment functions
+
+  audio::Control<valtype> *aControl = nullptr, *bControl = nullptr;
 
   int aLabelWidth = 0, bLabelWidth = 0;
   valtype aIncrScale = 1, bIncrScale = 1;
 
 public:
-    DualNumericalWidget(const char *aLabel, const char *bLabel, valtype a, valtype b)
-        : Widget(), aLabel(aLabel), bLabel(bLabel), aVal(a), bVal(b) {
-            aLabelWidth = strlen(aLabel) * 6;
-            bLabelWidth = strlen(bLabel) * 6;
+    explicit DualNumericalWidget(const char *aLabel, const char *bLabel, audio::Control<valtype> &aControl, audio::Control<valtype> &bControl)
+        : Widget(), aLabel(aLabel), bLabel(bLabel), aVal(*aControl), bVal(*bControl), aControl(&aControl), bControl(&bControl)
+    {
+        calcLabelLength();
+    }
+
+    DualNumericalWidget(const char *aLabel, const char *bLabel, valtype const& a, valtype const& b)
+        : Widget(), aLabel(aLabel), bLabel(bLabel), aVal(a), bVal(b)
+    {
+        
+        calcLabelLength();
+    }
+
+    void calcLabelLength() {
+        aLabelWidth = strlen(aLabel) * 6;
+        bLabelWidth = strlen(bLabel) * 6;
     }
 
     virtual int height() { 
@@ -120,7 +136,7 @@ public:
         main_oled.setCursor(2, botline);
         main_oled.print("\xc0");
         main_oled.setCursor(2 + 6, botline + 1);
-        main_oled.print(aVal);
+        main_oled.print(a());
         
         main_oled.setCursor(64 + 2, topline);
         main_oled.print("\xda");
@@ -129,24 +145,52 @@ public:
         main_oled.setCursor(64 + 2, botline);
         main_oled.print("\xc0");
         main_oled.setCursor(64 + 2 + 6, botline + 1);
-        main_oled.print(bVal);
+        main_oled.print(b());
 
         //main_oled.drawFastVLine(64, topLeft.y, height(), fg); // kinda hate how this looks.
+    }
+
+    valtype const& a() {
+        if (aControl) return **aControl;
+        return aVal;
+    }
+
+    valtype const& b() {
+        if (bControl) return **bControl;
+        return bVal;
+    }
+
+    void setA(valtype const& newValue) {
+        if (aControl) {
+            aControl->set(newValue);
+        }
+        else {
+            aVal = newValue;
+        }
+    }
+
+    void setB(valtype const& newValue) {
+        if (bControl) {
+            bControl->set(newValue);
+        }
+        else {
+            bVal = newValue;
+        }
     }
 
     virtual void handleInput(WidgetInput event) {
         switch (event) {
         case WidgetInput::LEFT_DECR:
-            em::clamp_incr(std::get<0>(aLimits), aVal, std::get<1>(aLimits), aIncrScale * -aIncr(aVal));
+            setA(em::clamp_incr(std::get<0>(aLimits), a(), std::get<1>(aLimits), aIncrScale * -aIncr(a())));
             break;
         case WidgetInput::LEFT_INCR:
-            em::clamp_incr(std::get<0>(aLimits), aVal, std::get<1>(aLimits), aIncrScale * aIncr(aVal));
+            setA(em::clamp_incr(std::get<0>(aLimits), a(), std::get<1>(aLimits), aIncrScale * aIncr(a())));
             break;
         case WidgetInput::RIGHT_DECR:
-            em::clamp_incr(std::get<0>(bLimits), bVal, std::get<1>(bLimits), bIncrScale * -bIncr(bVal));
+            setB(em::clamp_incr(std::get<0>(bLimits), b(), std::get<1>(bLimits), bIncrScale * -bIncr(b())));
             break;
         case WidgetInput::RIGHT_INCR:
-            em::clamp_incr(std::get<0>(bLimits), bVal, std::get<1>(bLimits), bIncrScale * bIncr(bVal));
+            setB(em::clamp_incr(std::get<0>(bLimits), b(), std::get<1>(bLimits), bIncrScale * bIncr(b())));
             break;
         case WidgetInput::LEFT_PUSH:
             aIncrScale = 10;
@@ -166,6 +210,28 @@ public:
     }
 };
 
+using Direction = int;
+
+constexpr Direction North = 0;
+constexpr Direction East = 1;
+constexpr Direction South = 2;
+constexpr Direction West = 3;
+
+constexpr Direction opposite_direction(Direction dir) {
+    switch (dir) {
+    case North:
+        return South;
+    case South:
+        return North;
+    case East: 
+        return West;
+    case West:
+        return East;
+    }
+
+    return -1;
+}
+
 /**
  * A single, stateful instance of a particular screen.
 */
@@ -176,7 +242,9 @@ protected:
     bool dirty = true;
 
     /// @brief Widget currently receiving focus.
-    Widget *focusedWidget;
+    Widget *focusedWidget = nullptr;
+
+    std::array<Screen*, 4> neighbors {nullptr, nullptr, nullptr, nullptr};
 
 public:
 
@@ -189,8 +257,29 @@ public:
     /// @brief Is the given widget currently focused?
     bool focused(Widget const& w) { return focusedWidget == &w; }
     
+    /// @brief Link a new screen to this one in the given direction.
+    void link(Screen* neighbor, Direction dir) {
+        neighbors[dir] = neighbor;
+        neighbor->neighbors[opposite_direction(dir)] = this;
+    }
+
+    /// @brief Get the neighboring screen in the given direction, or nullptr if none exists.
+    Screen* nextScreen(Direction dir) {
+        return neighbors[dir];
+    }
+
+    /// @brief Get the farthest screen reachable in the given direction. Returns this screen if no neighbor exists. 
+    Screen* zipTo(Direction dir) {
+        Screen *s = this;
+        while (Screen *n = s->nextScreen(dir)) {
+            s = n;
+        }
+        return s;
+    }
+
     /// @brief Scroll to the next widget.
     void nextWidget() {
+        if (!focusedWidget) return;
         if (focusedWidget->next) {
             focusedWidget->draw(false);
             focusedWidget = focusedWidget->next;
@@ -200,6 +289,7 @@ public:
 
     /// @brief Scroll to the previous widget.
     void prevWidget() {
+        if (!focusedWidget) return;
         if (focusedWidget->prev) {
             focusedWidget->draw(false);
             focusedWidget = focusedWidget->prev;
@@ -209,6 +299,7 @@ public:
 
     /// @brief Pass inputs to the focused widget.
     virtual void handleInput(WidgetInput const& event) {
+        if (!focusedWidget) return;
         if (focusedWidget) {
             focusedWidget->handleInput(event);
             focusedWidget->draw(true); // we must be focused if we're getting input
@@ -220,5 +311,7 @@ public:
 
 extern Screen* rootScreen;
 extern Screen* activeScreen;
+
+Screen* go_to_screen(Screen *s);
 
 }

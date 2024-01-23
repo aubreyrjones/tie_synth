@@ -65,9 +65,8 @@ T clamp(L const& low, T const& val, H const& high) {
 }
 
 template <typename L, typename T, typename H, typename I>
-T& clamp_incr(L const& low, T & val, H const& high, I const& increment) {
-    val = clamp(low, val + increment, high);
-    return val;
+T clamp_incr(L const& low, T const& val, H const& high, I const& increment) {
+    return clamp(low, val + increment, high);
 }
 
 inline int center(int item, int space) {

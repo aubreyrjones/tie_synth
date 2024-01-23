@@ -88,6 +88,25 @@ gui::WidgetInput cc_to_input_event(midi::DataByte const& cc, midi::DataByte cons
 }
 
 
+bool handle_nav_arrows(int cc, bool push) {
+  auto direction = -1;
+  switch (cc) {
+    case 3: direction = gui::South; break;
+    case 4: direction = gui::East; break;
+    case 5: direction = gui::North; break;
+    case 6: direction = gui::West; break;
+  }
+
+  if (direction < 0) return false; // not our CC
+
+  if (!push) {
+    gui::go_to_screen(gui::activeScreen->nextScreen(direction));
+  }
+
+  return true;
+}
+
+
 Metro blankTimeout(60000); // 1 minute screen sleep timer
 Metro scopeRepaint(40); // 25fps
 
@@ -97,12 +116,17 @@ void loop() {
   using namespace display;
 
   bool has_midi_input = serial_midi.read();
+
   if (has_midi_input) {
     blankTimeout.reset();
     blankMode = false;
   }
 
-  if (blankTimeout.check() || blankMode) {
+  if (blankMode) {
+    return;
+  }
+
+  if (blankTimeout.check()) {
     blankMode = true;
     gui::activeScreen->sully(); // so it'll repaint next time.
     main_oled.fillScreen(0);
@@ -125,10 +149,10 @@ void loop() {
     else if (cc == 1 || cc == 2 || cc == 8 || cc == 9) {
       gui::activeScreen->handleInput(cc_to_input_event(cc, signal));
     }
+    else if (handle_nav_arrows(cc, signal)) {
+      //intentionally blank.
+    }
   }
-
-  gui::activeScreen->draw();
-
 
   if (scopeRepaint.check()) {
     scopeRepaint.reset();
@@ -146,4 +170,6 @@ void loop() {
     }
     scope_oled.sendBuffer();
   }
+
+  gui::activeScreen->draw();
 }
