@@ -3,6 +3,7 @@
 #include <functional>
 #include <optional>
 #include <tuple>
+#include <util/emmath.h>
 
 namespace audio {
 
@@ -18,6 +19,8 @@ public:
 
     using update_function = std::function<void(valtype const&)>;
 
+    using limits_t = std::tuple<valtype, valtype>;
+
 private:
     /// @brief Current authoritative value of the control.
     valtype value;
@@ -25,8 +28,11 @@ private:
     /// @brief A flag used to indicate that this control has changed.
     bool _dirty = false;
 
-    update_function onUpdate = [this](valtype v){ };
+    /// @brief Update function.
+    std::optional<update_function> onUpdate;
 
+    /// @brief Limits for the value.
+    std::optional<limits_t> limits;
 public:
 
     /// @brief Construct a Control with no update function (i.e. you'll poll the value when appropriate).
@@ -39,39 +45,51 @@ public:
     Control(valtype const& initialValue, update_function onUpdate) : value(initialValue), onUpdate(onUpdate) {}
     
     /// @brief Construct a Control with an update function and numerical limits.
-    Control(valtype const& initialValue, std::tuple<valtype, valtype> const& limits, update_function onUpdate) : value(initialValue), onUpdate(onUpdate) {}
+    Control(valtype const& initialValue, std::tuple<valtype, valtype> const& limits, update_function onUpdate) : value(initialValue), onUpdate(onUpdate), limits(limits) {}
 
+    /// @brief has this control been changed since the last call to doUpdate()?
     bool const& dirty() const { return _dirty; }
 
+    /// @brief Removes the dirty flag.
     void wash() { _dirty = false; }
 
 
     /// @brief If dirty, run the update function with the current value and wash the control.
     void doUpdate() {
         if (!_dirty) return;
-        onUpdate(value);
+        if (onUpdate) 
+            onUpdate.value()(value);
         wash();
     }
 
     /// @brief Set the value.
     /// @param v the new value
     void set(valtype const& v) {
-        if (v == value) return;
-        value = v;
+        using std::get;
+
+        if (v == value) return; // same value, so don't dirty ourselves just bail.
+
+        if (limits) { // we're limited, so limit it.
+            value = em::clamp(get<0>(limits.value()), v, get<1>(limits.value()));
+        }
+        else {
+            value = v;
+        }
+
         _dirty = true;
 
-        // TODO move this to an update step!
+        // TODO move this to a separate update step!
         doUpdate();
     }
 
     /// @brief Get the current value.
     /// @return a const ref to the current value.
-    valtype const& get() const {
+    inline valtype const& get() const {
         return value;
     }
 
     /// @brief Sugar for get().
-    valtype const& operator*() {
+    inline valtype const& operator*() const {
         return get();
     }
 };

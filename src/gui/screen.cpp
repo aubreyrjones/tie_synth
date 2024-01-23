@@ -7,7 +7,10 @@ namespace gui {
 //==========================================================
 
 class HomeScreen : public Screen {
-    DualNumericalWidget<byte> volumes;
+    audio::Control<float> headphoneVolume {0.5f, {0.01, 1}, [](float vol) { } };
+    audio::Control<float> lineoutVolume {0.5f, {0.01, 1}, [](float vol) { } };
+
+    DualNumericalWidget<float> volumes;
     DualNumericalWidget<byte> something;
     DualNumericalWidget<float> another;
     DualNumericalWidget<float> one;
@@ -15,7 +18,7 @@ class HomeScreen : public Screen {
 
 public:
     HomeScreen() : 
-        volumes("Vol.HP", "Vol.Ln", 64, 64), 
+        volumes("Vol.HP", "Vol.Ln", headphoneVolume, lineoutVolume), 
         something("Hi", "Katie", 0, 0), 
         another("I \x03\x03\x03\x03\x03", "You!", 14.27, 127.78), 
         one("A whole", "Bunch!", 13, 37),
