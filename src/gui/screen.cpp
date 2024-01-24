@@ -1,13 +1,28 @@
 #include "screen.hpp"
+#include "../audio/audio_externs.h"
 
 
 namespace gui {
 
+void Screen::flowWidgets(em::ivec const& tl, Widget* firstWidget) {
+    auto start = tl.y;
+    do {
+        firstWidget->position({tl.x, start});
+        start += firstWidget->height();
+    } while ( (firstWidget = firstWidget->next) );
+}
+
+void Screen::drawWidgets(Widget* firstWidget) {
+    do {
+        firstWidget->draw(focused(*firstWidget));
+    } while ( (firstWidget = firstWidget->next) );
+}
 
 //==========================================================
 
 class HomeScreen : public Screen {
-    audio::Control<float> headphoneVolume {"Vol.HP", 0.5f, {0.01, 1}, [](float vol) { } };
+    audio::Control<float> headphoneVolume {"Vol.HP", 0.5f, {0.01, 1}, [](float vol) { output_amp.gain(vol);} };
+    
     audio::Control<float> lineoutVolume {"Vol.Ln", 0.5f, {0.01, 1}, [](float vol) { } };
 
     audio::Control<byte> testControl1 {"Hi", 0, {0, 255}, [](byte) { } };

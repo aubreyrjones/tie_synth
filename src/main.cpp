@@ -3,7 +3,7 @@
 
 AudioAnalyzeScope scopeTap;
 
-AudioConnection patchCord_0(sine1, 0, scopeTap, 0);
+AudioConnection patchCord_0(output_amp, 0, scopeTap, 0);
 
 #include "display.h"
 #include <MIDI.h>
@@ -28,7 +28,7 @@ float curFreq = 440.f;
 float curAmp = 1.f;
 
 void setup() {
-  AudioMemory(12);
+  AudioMemory(32);
   randomSeed(analogRead(0));
 
   Serial.begin(38400);                  // terminal with computer
@@ -43,6 +43,20 @@ void setup() {
 
   sine1.frequency(curFreq);
   sine1.amplitude(curAmp);
+
+  va_osc1.begin(0.5, 440, 0);
+  va_osc2.begin(0.5, 440, 0);
+
+  va_filter.frequency(4000);
+  va_filter.resonance(0.7f);
+
+  va_osc_mixer.gain(1, 0);
+  va_osc_mixer.gain(2, 0);
+  va_osc_mixer.gain(3, 0);
+
+  va_filter_mixer.gain(1, 0);
+  va_filter_mixer.gain(2, 0);
+  va_filter_mixer.gain(3, 0);
 
   display::initialize_oleds();
 }

@@ -36,9 +36,10 @@ public:
         topLeft = tl;
     }
 
-    virtual void link(Widget & nextWidget) {
+    virtual Widget& link(Widget & nextWidget) {
         next = &nextWidget;
         nextWidget.prev = this;
+        return nextWidget;
     }
 
     virtual void handleInput(WidgetInput event) {};
@@ -307,6 +308,9 @@ public:
             focusedWidget->draw(true); // we must be focused if we're getting input
         }
     }
+
+    void flowWidgets(em::ivec const& tl, Widget* firstWidget);
+    void drawWidgets(Widget* firstWidget);
 
     virtual ~Screen() {};
 };

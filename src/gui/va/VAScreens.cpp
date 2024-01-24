@@ -5,17 +5,35 @@ namespace gui {
 
 struct VAScreen : public Screen {
 
+    DualNumericalWidget<int> oscTypes;
     DualNumericalWidget<float> testAmpFreq;
+    DualNumericalWidget<float> filterSettings;
+    DualNumericalWidget<int> filterType;
 
-    VAScreen() : Screen(), testAmpFreq(audio::va_module.amplitude, audio::va_module.frequency) {
-        focusedWidget = &testAmpFreq;
+
+    VAScreen() : 
+        Screen(), 
+        oscTypes(audio::va_module.osc1Type, audio::va_module.osc2Type), 
+        testAmpFreq(audio::va_module.osc12Mix, audio::va_module.frequency),
+        filterSettings(audio::va_module.filterCutoffFreq, audio::va_module.filterResonance),
+        filterType(audio::va_module.filterSwitch, audio::va_module.dummyContrl)
+        
+    {
+        oscTypes.link(testAmpFreq).link(filterType).link(filterSettings);
+
+        focusedWidget = &oscTypes;
 
         auto start = 18;
-        testAmpFreq.position({0, start});
+        flowWidgets({0, 18}, &oscTypes);
 
         testAmpFreq.setIncrements(
             [](float v){ return 0.01f; },
             [](float v){ return 1.f; }
+        );
+
+        filterSettings.setIncrements(
+            [](float v){ return 10.f; },
+            [](float v){ return 0.01f; }
         );
 
     }
@@ -33,7 +51,7 @@ struct VAScreen : public Screen {
         main_oled.setTextColor(hotpink);
         main_oled.print("The VAlley");
 
-        testAmpFreq.draw(focused(testAmpFreq));
+        drawWidgets(&oscTypes);
 
         dirty = false;
     }
