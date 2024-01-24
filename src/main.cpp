@@ -3,7 +3,7 @@
 
 AudioAnalyzeScope scopeTap;
 
-AudioConnection patchCord_0(output_amp, 0, scopeTap, 0);
+AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 
 #include "display.h"
 #include <MIDI.h>
@@ -11,11 +11,6 @@ AudioConnection patchCord_0(output_amp, 0, scopeTap, 0);
 #include "gui/screen.hpp"
 
 constexpr float hw_output_volume = 0.5f;
-
-// Color
-const uint16_t WHITE = 0xFFFF;
-
-// Displays
 
 struct FastMIDIBaud {
   static const long BaudRate = 1000000;
@@ -32,8 +27,7 @@ void setup() {
   randomSeed(analogRead(0));
 
   Serial.begin(38400);                  // terminal with computer
-  serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it
-                                        // out ourselves.
+  serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it out ourselves.
 
   // Set up sound chips.
   sgtl5000_1.setAddress(LOW);
@@ -113,7 +107,7 @@ bool handle_nav_arrows(int cc, bool push) {
 
   if (direction < 0) return false; // not our CC
 
-  if (!push) {
+  if (!push) { // move on release
     gui::go_to_screen(gui::activeScreen->nextScreen(direction));
   }
 

@@ -1,29 +1,43 @@
 #include "../screen.hpp"
 #include <audio/va/VASynth.hpp>
+#include <array>
 
 namespace gui {
 
+constexpr std::array WaveformChoices {
+    std::tuple{"Sine", WAVEFORM_SINE},
+    std::tuple{"Tri", WAVEFORM_TRIANGLE},
+    std::tuple{"Saw", WAVEFORM_BANDLIMIT_SAWTOOTH},
+    std::tuple{"R.Saw", WAVEFORM_BANDLIMIT_SAWTOOTH_REVERSE},
+    std::tuple{"Square", WAVEFORM_BANDLIMIT_SQUARE}
+};
+
+constexpr std::array FilterChoices {
+    std::tuple{"LowP", 0},
+    std::tuple{"BandP", 1},
+    std::tuple{"HighP", 2}
+};
+
 struct VAScreen : public Screen {
 
-    DualNumericalWidget<int> oscTypes;
-    DualNumericalWidget<float> testAmpFreq;
+    DualWidget<ChoiceWidget, ChoiceWidget> oscTypes;
+    DualNumericalWidget<float> mixAndFreq;
     DualNumericalWidget<float> filterSettings;
-    DualNumericalWidget<int> filterType;
+    DualWidget<ChoiceWidget, NumericalWidget<int>> filterType;
 
 
     VAScreen() : 
         Screen(), 
-        oscTypes(audio::va_module.osc1Type, audio::va_module.osc2Type), 
-        testAmpFreq(audio::va_module.osc12Mix, audio::va_module.frequency),
+        oscTypes(ChoiceWidget(audio::va_module.osc1Type, meta::length_erase_array(WaveformChoices)), ChoiceWidget(audio::va_module.osc2Type, meta::length_erase_array(WaveformChoices))), 
+        mixAndFreq(audio::va_module.osc12Mix, audio::va_module.frequency),
         filterSettings(audio::va_module.filterCutoffFreq, audio::va_module.filterResonance),
-        filterType(audio::va_module.filterSwitch, audio::va_module.dummyContrl)
+        filterType(ChoiceWidget(audio::va_module.filterSwitch, meta::length_erase_array(FilterChoices)), NumericalWidget(audio::va_module.dummyContrl))
         
     {
-        oscTypes.link(testAmpFreq).link(filterType).link(filterSettings);
+        oscTypes.link(mixAndFreq).link(filterType).link(filterSettings);
 
         focusedWidget = &oscTypes;
 
-        auto start = 18;
         flowWidgets({0, 18}, &oscTypes);
 
         testAmpFreq.setIncrements(

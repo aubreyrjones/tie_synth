@@ -5,9 +5,9 @@
 #include <tuple>
 #include <functional>
 #include <audio/Control.hpp>
+#include "../util/meta.hpp"
 
 namespace gui {
-
 
 enum class WidgetInput {
     LEFT_DECR, // encoder turns
@@ -212,6 +212,185 @@ public:
         }
     }
 };
+
+using ChoiceVector = meta::StaticVector<int>;
+
+/// @brief Present a list of text choices mapping to integer values.
+class ChoiceWidget : public Widget {
+public:
+    using ChoiceOption = std::tuple<const char*, int>;
+    using ChoiceVector = meta::StaticVector<ChoiceOption>;
+
+protected:
+    static constexpr int fontSize = 1;
+    static constexpr int fontWidth = 6 * fontSize;
+    static constexpr int fontHeight = 8 * fontSize;
+
+    audio::Control<int> *control;
+    ChoiceOption const* choices; // super consty
+    const int choiceCount;
+    
+
+    // int selectedIndex; // the currently-selected index. -- actually, I think we're gonna not maintain this copy of the state.
+
+public:
+    ChoiceWidget(audio::Control<int> & control, ChoiceOption const* choices, int choiceCount) : 
+        Widget(), 
+        control(&control),
+        choices(choices),
+        choiceCount(choiceCount)
+    {
+    }
+
+    ChoiceWidget(audio::Control<int> & control, ChoiceVector const& cv) : 
+        Widget(), 
+        control(&control),
+        choices(std::get<0>(cv)),
+        choiceCount(std::get<1>(cv))
+    {
+    }
+
+    virtual int height() { 
+        return (2 * fontHeight) + // two lines of characters
+        4 + // spacing between
+        2 + // padding
+        2; // border
+    }
+
+    const int indexForChoice(int choice) const {
+        // This is a linear search because the choice-list is expected to be very short, on the order of 
+        // n < 10. Maintaining an O(1) structure just costs more memory without offering a meaningful
+        // speedup.
+        for (int i = 0; i < choiceCount; i++) {
+            if (std::get<1>(choices[i]) == choice) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// @brief Get the text corresponding to the given choice value.
+    const char* textForChoice(int choice) const {
+        auto index = indexForChoice(choice);
+        if (index < 0) return nullptr;
+
+        return std::get<0>(choices[index]);
+    }
+
+    void draw(bool focused) override {
+        using namespace display;
+        using namespace colors;
+
+        auto bg = focused ? colors::white : colors::black;
+        auto fg = focused ? colors::black : colors::white;
+
+        main_oled.setTextSize(fontSize);
+        main_oled.setTextColor(fg, bg);
+
+        const auto topline = topLeft.y + 2;
+        const auto botline = topline + fontHeight;
+        const auto leftText = topLeft.x + 2;
+        
+
+        main_oled.setCursor(leftText, topline);
+        main_oled.print("\xda");
+        main_oled.print(control->name());
+
+        main_oled.setCursor(leftText, botline);
+        main_oled.print("\xc0\x12");
+        main_oled.setCursor(leftText + (2 * fontWidth) + 2, botline + 4);
+        main_oled.print(textForChoice(**control)); // get the text for the current choice
+    }
+
+    void changeChoice(int dir) {
+        auto nextIndex = (indexForChoice(**control) + dir); // should wrap around
+
+        while (nextIndex >= choiceCount) {
+            nextIndex -= choiceCount;
+        }
+        while (nextIndex < 0) {
+            nextIndex += choiceCount;
+        }
+
+        control->set(std::get<1>(choices[nextIndex]));
+    }
+
+    virtual void handleInput(WidgetInput event) override {
+        switch (event) {
+        case WidgetInput::LEFT_DECR:
+        case WidgetInput::RIGHT_DECR:
+            changeChoice(-1);
+            break;
+        case WidgetInput::RIGHT_INCR:
+        case WidgetInput::LEFT_INCR:
+            changeChoice(1);
+            break;
+        default:
+            break;
+        }
+    }
+};
+
+
+template <typename LEFT_T, typename RIGHT_T>
+class DualWidget : public Widget {
+public:
+    using left_t = LEFT_T;
+    using right_t = RIGHT_T;
+
+protected:
+    left_t left;
+    right_t right;
+
+public:
+
+    DualWidget(left_t left, right_t right) :
+        Widget(), left(left), right(right) {
+    }
+
+    int height() override {
+        return std::max(left.height(), right.height());
+    }
+
+    void position(em::ivec const& tl) override {
+        Widget::position(tl);
+        left.position(tl);
+        right.position(tl + em::ivec{64, 0});
+    }
+
+    void draw(bool focused) override {
+        using namespace display;
+        using namespace colors;
+
+        auto bg = focused ? colors::white : colors::black;
+
+        main_oled.fillRect(topLeft.x, topLeft.y, 128, height(), bg);
+
+        left.draw(focused);
+        right.draw(focused);
+    }
+
+    virtual void handleInput(WidgetInput event) {
+        switch (event) {
+        case WidgetInput::LEFT_DECR:
+        case WidgetInput::LEFT_INCR:
+        case WidgetInput::LEFT_PUSH:
+        case WidgetInput::LEFT_REL:
+            left.handleInput(event);
+            break;
+        case WidgetInput::RIGHT_DECR:
+        case WidgetInput::RIGHT_INCR:
+        case WidgetInput::RIGHT_PUSH:
+        case WidgetInput::RIGHT_REL:
+            right.handleInput(event);
+        default:
+            break;
+        }
+    }
+};
+
+// ============================================================
 
 using Direction = int;
 
