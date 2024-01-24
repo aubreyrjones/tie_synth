@@ -23,13 +23,13 @@ public:
 
 private:
     /// @brief Human-readable name for this control.
-    const char* _name = "?";
+    const char* _name;
 
     /// @brief Current authoritative value of the control.
     valtype value;
 
-    /// @brief A flag used to indicate that this control has changed.
-    bool _dirty = false;
+    /// @brief A flag used to indicate that this control has changed. Starts true for initialization purposes.
+    bool _dirty = true;
 
     /// @brief Update function.
     std::optional<update_function> onUpdate;

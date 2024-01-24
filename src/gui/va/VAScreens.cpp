@@ -40,7 +40,7 @@ struct VAScreen : public Screen {
 
         flowWidgets({0, 18}, &oscTypes);
 
-        testAmpFreq.setIncrements(
+        mixAndFreq.setIncrements(
             [](float v){ return 0.01f; },
             [](float v){ return 1.f; }
         );
