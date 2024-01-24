@@ -22,6 +22,9 @@ public:
     using limits_t = std::tuple<valtype, valtype>;
 
 private:
+    /// @brief Human-readable name for this control.
+    const char* _name = "?";
+
     /// @brief Current authoritative value of the control.
     valtype value;
 
@@ -33,19 +36,22 @@ private:
 
     /// @brief Limits for the value.
     std::optional<limits_t> limits;
+
 public:
 
     /// @brief Construct a Control with no update function (i.e. you'll poll the value when appropriate).
     /// @param initialValue the initial value for the control to take on.
-    Control(valtype const& initialValue) : value(initialValue) {}
+    Control(const char* name, valtype const& initialValue) : _name(name), value(initialValue) {}
 
     /// @brief Construct a Control with an update function called when this Control is dirty and `doUpdate()` is called on it.
     /// @param initialValue the initial value for the control to take on.
     /// @param onUpdate called with the updated value
-    Control(valtype const& initialValue, update_function onUpdate) : value(initialValue), onUpdate(onUpdate) {}
+    Control(const char* name, valtype const& initialValue, update_function onUpdate) : _name(name), value(initialValue), onUpdate(onUpdate) {}
     
     /// @brief Construct a Control with an update function and numerical limits.
-    Control(valtype const& initialValue, std::tuple<valtype, valtype> const& limits, update_function onUpdate) : value(initialValue), onUpdate(onUpdate), limits(limits) {}
+    Control(const char* name, valtype const& initialValue, std::tuple<valtype, valtype> const& limits, update_function onUpdate) : _name(name), value(initialValue), onUpdate(onUpdate), limits(limits) {}
+
+    const char* const& name() { return _name; }
 
     /// @brief has this control been changed since the last call to doUpdate()?
     bool const& dirty() const { return _dirty; }

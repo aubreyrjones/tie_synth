@@ -10,15 +10,15 @@ namespace gui {
 
 
 enum class WidgetInput {
-    LEFT_DECR, // stick turns
+    LEFT_DECR, // encoder turns
     LEFT_INCR,
     RIGHT_DECR,
     RIGHT_INCR,
 
-    LEFT_PUSH, // stick press and releases
+    LEFT_PUSH, // encoder press and releases
     LEFT_REL,
     RIGHT_PUSH,
-    RIGHT_REL, 
+    RIGHT_REL,
 
     NULL_INPUT
 };
@@ -28,14 +28,15 @@ enum class WidgetInput {
 class Widget {
 protected:
     em::ivec topLeft;
+
 public:
     virtual void draw(bool focused);
 
-    void position(em::ivec const& tl) {
+    virtual void position(em::ivec const& tl) {
         topLeft = tl;
     }
 
-    void link(Widget & nextWidget) {
+    virtual void link(Widget & nextWidget) {
         next = &nextWidget;
         nextWidget.prev = this;
     }
@@ -51,49 +52,48 @@ public:
 };
 
 
-/**
- * Display two numerical controls with labels. They must be of the same type.
-*/
 template <typename VALTYPE>
-class DualNumericalWidget : public Widget {
+class NumericalWidget : public Widget {
 public:
     using valtype = VALTYPE;
     using incr_func = std::function<valtype(const valtype)>;
 
     static valtype _default_incr(const valtype) { return 1; }
 
+    static constexpr int fontSize = 1;
+    static constexpr int fontWidth = 6 * fontSize;
+    static constexpr int fontHeight = 8 * fontSize;
+
 protected:
-  const char *aLabel, *bLabel;
+  const char *aLabel;
 
-  incr_func aIncr = _default_incr, bIncr = _default_incr; // increment functions
+  incr_func aIncr = _default_incr; // increment function
 
-  audio::Control<valtype> *aControl = nullptr, *bControl = nullptr;
+  audio::Control<valtype> *aControl = nullptr;
 
-  int aLabelWidth = 0, bLabelWidth = 0;
-  valtype aIncrScale = 1, bIncrScale = 1;
+  int aLabelWidth = 0;
+  valtype aIncrScale = 1;
 
 public:
-    explicit DualNumericalWidget(const char *aLabel, const char *bLabel, audio::Control<valtype> &aControl, audio::Control<valtype> &bControl)
-        : Widget(), aLabel(aLabel), bLabel(bLabel), aControl(&aControl), bControl(&bControl)
+    explicit NumericalWidget(audio::Control<valtype> &control)
+        : Widget(), aLabel(control.name()), aControl(&control)
     {
         calcLabelLength();
     }
 
     void calcLabelLength() {
-        aLabelWidth = strlen(aLabel) * 6;
-        bLabelWidth = strlen(bLabel) * 6;
+        aLabelWidth = strlen(aLabel) * (6 * fontSize);
     }
 
     virtual int height() { 
-        return 16 + // two lines of characters
-        1 + // spacing between
+        return (2 * fontHeight) + // two lines of characters
+        4 + // spacing between
         2 + // padding
         2; // border
     }
 
-    void setIncrements(incr_func a, incr_func b) {
-        aIncr = a; 
-        bIncr = b;
+    void setIncrements(incr_func a) {
+        aIncr = a;
     }
 
     void draw(bool focused) override {
@@ -103,73 +103,109 @@ public:
         auto bg = focused ? colors::white : colors::black;
         auto fg = focused ? colors::black : colors::white;
 
-        main_oled.fillRect(topLeft.x, topLeft.y, 128, height(), bg);
-
-        if (!focused) {
-            main_oled.drawRect(topLeft.x, topLeft.y, 128, height(), fg);
-        }
-        
-        main_oled.setTextSize(1);
+        main_oled.setTextSize(fontSize);
         main_oled.setTextColor(fg, bg);
 
         const auto topline = topLeft.y + 2;
-        const auto botline = topline + 8 ;
+        const auto botline = topline + fontHeight;
+        const auto leftText = topLeft.x + 2;
+        
 
-        main_oled.setCursor(2, topline);
+        main_oled.setCursor(leftText, topline);
         main_oled.print("\xda");
         main_oled.print(aLabel);
 
-        main_oled.setCursor(2, botline);
-        main_oled.print("\xc0");
-        main_oled.setCursor(2 + 6, botline + 1);
+        main_oled.setCursor(leftText, botline);
+        main_oled.print("\xc0\x12");
+        main_oled.setCursor(leftText + (2 * fontWidth) + 2, botline + 4);
         main_oled.print(a());
-        
-        main_oled.setCursor(64 + 2, topline);
-        main_oled.print("\xda");
-        main_oled.print(bLabel);
-
-        main_oled.setCursor(64 + 2, botline);
-        main_oled.print("\xc0");
-        main_oled.setCursor(64 + 2 + 6, botline + 1);
-        main_oled.print(b());
-
-        //main_oled.drawFastVLine(64, topLeft.y, height(), fg); // kinda hate how this looks.
     }
 
     valtype const& a() {
         return **aControl;
     }
 
-    valtype const& b() {
-        return **bControl;
+    virtual void handleInput(WidgetInput event) {
+        switch (event) {
+        case WidgetInput::LEFT_DECR:
+        case WidgetInput::RIGHT_DECR:
+            aControl->adjust(false, aIncrScale * aIncr(a()));
+            break;
+        case WidgetInput::RIGHT_INCR:
+        case WidgetInput::LEFT_INCR:
+            aControl->adjust(true, aIncrScale * aIncr(a()));
+            break;
+        case WidgetInput::LEFT_PUSH:
+        case WidgetInput::RIGHT_PUSH:
+            aIncrScale = 10;
+            break;
+        case WidgetInput::LEFT_REL:
+        case WidgetInput::RIGHT_REL:
+            aIncrScale = 1;
+            break;
+        default:
+            break;
+        }
+    }
+};
+
+template <typename VALTYPE>
+class DualNumericalWidget : public Widget {
+public:
+    using valtype = VALTYPE;
+    using incr_func = std::function<valtype(const valtype)>;
+
+    static valtype _default_incr(const valtype) { return 1; }
+
+protected:
+    NumericalWidget<valtype> left, right;
+
+public:
+
+    DualNumericalWidget(audio::Control<valtype> &aControl, audio::Control<valtype> &bControl) :
+        Widget(), left(aControl), right(bControl) {
+    }
+
+    void setIncrements(incr_func a, incr_func b) {
+        left.setIncrements(a);
+        right.setIncrements(b);
+    }
+
+    int height() override {
+        return std::max(left.height(), right.height());
+    }
+
+    void position(em::ivec const& tl) override {
+        Widget::position(tl);
+        left.position(tl);
+        right.position(tl + em::ivec{64, 0});
+    }
+
+    void draw(bool focused) override {
+        using namespace display;
+        using namespace colors;
+
+        auto bg = focused ? colors::white : colors::black;
+
+        main_oled.fillRect(topLeft.x, topLeft.y, 128, height(), bg);
+
+        left.draw(focused);
+        right.draw(focused);
     }
 
     virtual void handleInput(WidgetInput event) {
         switch (event) {
         case WidgetInput::LEFT_DECR:
-            aControl->adjust(false, aIncrScale * aIncr(a()));
-            break;
         case WidgetInput::LEFT_INCR:
-            aControl->adjust(true, aIncrScale * aIncr(a()));
+        case WidgetInput::LEFT_PUSH:
+        case WidgetInput::LEFT_REL:
+            left.handleInput(event);
             break;
         case WidgetInput::RIGHT_DECR:
-            bControl->adjust(false, bIncrScale * bIncr(b()));
-            break;
         case WidgetInput::RIGHT_INCR:
-            bControl->adjust(true, bIncrScale * bIncr(b()));
-            break;
-        case WidgetInput::LEFT_PUSH:
-            aIncrScale = 10;
-            break;
-        case WidgetInput::LEFT_REL:
-            aIncrScale = 1;
-            break;
         case WidgetInput::RIGHT_PUSH:
-            bIncrScale = 10;
-            break;
         case WidgetInput::RIGHT_REL:
-            bIncrScale = 1;
-            break;
+            right.handleInput(event);
         default:
             break;
         }

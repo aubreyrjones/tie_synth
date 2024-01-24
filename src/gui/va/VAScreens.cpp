@@ -7,7 +7,7 @@ struct VAScreen : public Screen {
 
     DualNumericalWidget<float> testAmpFreq;
 
-    VAScreen() : Screen(), testAmpFreq("Amp.", "Freq.", audio::va_module.amplitude, audio::va_module.frequency) {
+    VAScreen() : Screen(), testAmpFreq(audio::va_module.amplitude, audio::va_module.frequency) {
         focusedWidget = &testAmpFreq;
 
         auto start = 18;
@@ -15,7 +15,7 @@ struct VAScreen : public Screen {
 
         testAmpFreq.setIncrements(
             [](float v){ return 0.01f; },
-            DualNumericalWidget<float>::_default_incr
+            [](float v){ return 1.f; }
         );
 
     }
