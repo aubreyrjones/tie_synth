@@ -4,6 +4,25 @@
 
 namespace gui {
 
+void Screen::drawHelper(const char* title, uint16_t titleColor, int titlePadding, Widget* firstWidget) {
+    using namespace display;
+    using namespace colors;
+
+    if (!dirty) return;
+
+    main_oled.fillScreen(0); // clear the screen
+
+    main_oled.setCursor(titlePadding, 0);
+    main_oled.setTextSize(2);
+    main_oled.setTextColor(titleColor);
+    main_oled.print(title);
+
+    drawWidgets(firstWidget);
+
+    dirty = false;
+}
+
+
 void Screen::flowWidgets(em::ivec const& tl, Widget* firstWidget) {
     auto start = tl.y;
     do {
@@ -56,10 +75,12 @@ public:
 
         // layout
         auto start = 18;
-        volumes.position({0, start});
-        something.position({0, start += volumes.height()});
-        something2.position({0, start += something.height()});
-        something3.position({0, start += something2.height()});
+        flowWidgets({0, start}, &volumes);
+
+        // volumes.position({0, start});
+        // something.position({0, start += volumes.height()});
+        // something2.position({0, start += something.height()});
+        // something3.position({0, start += something2.height()});
 
 
         volumes.setIncrements([](float v){ return 0.01f; }, [](float v){ return 0.01f; });
@@ -69,21 +90,25 @@ public:
         using namespace display;
         using namespace colors;
 
-        if (!dirty) return;
+        drawHelper("Synthburg", cornflowerblue, 12, &volumes);
 
-        main_oled.fillScreen(0); // clear the screen
+        // if (!dirty) return;
 
-        main_oled.setCursor(12, 0);
-        main_oled.setTextSize(2);
-        main_oled.setTextColor(cornflowerblue);
-        main_oled.print("Synthburg");
+        // main_oled.fillScreen(0); // clear the screen
 
-        volumes.draw(focused(volumes));
-        something.draw(focused(something));
-        something2.draw(focused(something2));
-        something3.draw(focused(something3));
+        // main_oled.setCursor(12, 0);
+        // main_oled.setTextSize(2);
+        // main_oled.setTextColor(cornflowerblue);
+        // main_oled.print("Synthburg");
 
-        dirty = false;
+        // drawWidgets(&volumes);
+
+        // // volumes.draw(focused(volumes));
+        // // something.draw(focused(something));
+        // // something2.draw(focused(something2));
+        // // something3.draw(focused(something3));
+
+        // dirty = false;
     }
 };
 

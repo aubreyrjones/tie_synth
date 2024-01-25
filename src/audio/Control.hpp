@@ -26,13 +26,15 @@ public:
 /// The first control.
 _ControlBase* get_first_control();
 
-/// @brief Run the updates on all dirty controls.
+/// @brief Run updates on all dirty controls.
 void run_all_control_updates();
+
 
 /**
  * This class is intended to keep the controls of a synthesizer in sync across multiple different
  * input methods. The Control itself is owned by the synth module and stores the state of the 
- * control value.
+ * control value. Additionally, an on-update function may be defined to actually carry out the 
+ * change to runtime parameters based on these controls.
 */
 template <typename VALTYPE>
 class Control : public _ControlBase {

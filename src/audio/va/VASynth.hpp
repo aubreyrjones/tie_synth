@@ -28,7 +28,7 @@ public:
     Control<float> filterResonance {"Resonance", 0.7f, {0.7f, 7.f}, [](float q) { va_filter.resonance(q); } };
 
     /// @brief Select the type of filter. 0, 1, 2 for low-pass, band-pass, and high-pass respectively.
-    Control<int> filterSwitch {"FltType", 0, {0, 2}, [](int choice) {
+    Control<int> filterSwitch {"Type.Fltr", 0, {0, 2}, [](int choice) {
         float lg = 1, bg = 0, hg = 0;
         switch (choice) {
         // case 0: // default case handled by init above

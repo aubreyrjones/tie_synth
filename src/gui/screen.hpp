@@ -113,12 +113,14 @@ public:
         
 
         main_oled.setCursor(leftText, topline);
-        main_oled.print("\xda");
+        main_oled.print("\xc9");
         main_oled.print(aLabel);
-
-        main_oled.setCursor(leftText, botline);
-        main_oled.print("\xc0\x12");
-        main_oled.setCursor(leftText + (2 * fontWidth) + 2, botline + 4);
+        
+        main_oled.setCursor(leftText, botline + 4);
+        main_oled.print("\xc8\x12");
+        main_oled.drawFastVLine(leftText + 2, topline + 8, 4, fg);
+        main_oled.drawFastVLine(leftText + 4, topline + 8, 4, fg);
+        //main_oled.setCursor(leftText + (2 * fontWidth) + 2, botline + 4);
         main_oled.print(a());
     }
 
@@ -292,14 +294,14 @@ public:
         const auto botline = topline + fontHeight;
         const auto leftText = topLeft.x + 2;
         
-
         main_oled.setCursor(leftText, topline);
-        main_oled.print("\xda");
+        main_oled.print("\xc9");
         main_oled.print(control->name());
 
-        main_oled.setCursor(leftText, botline);
-        main_oled.print("\xc0\x12");
-        main_oled.setCursor(leftText + (2 * fontWidth) + 2, botline + 4);
+        main_oled.setCursor(leftText, botline + 4);
+        main_oled.print("\xc8\x10");
+        main_oled.drawFastVLine(leftText + 2, topline + 8, 4, fg);
+        main_oled.drawFastVLine(leftText + 4, topline + 8, 4, fg);
         main_oled.print(textForChoice(**control)); // get the text for the current choice
     }
 
@@ -427,6 +429,8 @@ protected:
     Widget *focusedWidget = nullptr;
 
     std::array<Screen*, 4> neighbors {nullptr, nullptr, nullptr, nullptr};
+
+    void drawHelper(const char* title, uint16_t titleColor, int titlePadding, Widget* firstWidget);
 
 public:
 

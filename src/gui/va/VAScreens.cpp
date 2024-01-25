@@ -25,7 +25,6 @@ struct VAScreen : public Screen {
     DualNumericalWidget<float> filterSettings;
     DualWidget<ChoiceWidget, NumericalWidget<int>> filterType;
 
-
     VAScreen() : 
         Screen(), 
         oscTypes(ChoiceWidget(audio::va_module.osc1Type, meta::length_erase_array(WaveformChoices)), ChoiceWidget(audio::va_module.osc2Type, meta::length_erase_array(WaveformChoices))), 
@@ -53,21 +52,23 @@ struct VAScreen : public Screen {
     }
 
     void draw() override {
-        using namespace display;
-        using namespace colors;
+        // using namespace display;
+        // using namespace colors;
 
-        if (!dirty) return;
+        // if (!dirty) return;
 
-        main_oled.fillScreen(0); // clear the screen
+        // main_oled.fillScreen(0); // clear the screen
 
-        main_oled.setCursor(4, 0);
-        main_oled.setTextSize(2);
-        main_oled.setTextColor(hotpink);
-        main_oled.print("The VAlley");
+        // main_oled.setCursor(4, 0);
+        // main_oled.setTextSize(2);
+        // main_oled.setTextColor(hotpink);
+        // main_oled.print("The VAlley");
 
-        drawWidgets(&oscTypes);
+        // drawWidgets(&oscTypes);
 
-        dirty = false;
+        // dirty = false;
+
+        drawHelper("The VAlley", colors::hotpink, 4, &oscTypes);
     }
 } 
 mainScreen; // instance
