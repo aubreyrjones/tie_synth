@@ -9,9 +9,12 @@ namespace audio {
 
 class VASynth {
 public:
-    Control<float> amplitude {"Amp.", 1, {0.01, 1}, [](float a) { sine1.amplitude(a); }};
+    Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [](float a) { sine1.amplitude(a); va_osc1.amplitude(a); va_osc2.amplitude(a); }};
     Control<float> frequency {"Freq.", 440, {1, 20000}, [](float f) { sine1.frequency(f); va_osc1.frequency(f); va_osc2.frequency(f); }};
     
+    Control<int> osc1Type {"Type.Osc1", 0, {0, 12}, [](int choice) { va_osc1.begin(choice); }};
+    Control<int> osc2Type {"Type.Osc2", 0, {0, 12}, [](int choice) { va_osc2.begin(choice); }};
+
     /// @brief Mix between osc1 and osc2.
     Control<float> osc12Mix {"Mix.1&2", 0, {0, 1}, [](float mix) { 
         va_osc_mixer.gain(0, 1.f - mix);
@@ -46,11 +49,8 @@ public:
 
     Control<int> dummyContrl {"Dummy", 0};
 
-    Control<int> osc1Type {"Type.Osc1", 0, {0, 12}, [](int choice) { va_osc1.begin(choice); }};
-    Control<int> osc2Type {"Type.Osc2", 0, {0, 12}, [](int choice) { va_osc2.begin(choice); }};
-
-    /// @brief Update synth operation from current controls.
-    void updateFromControls();
+    /// @brief Set up things not handled by Controls.
+    void doSetup();
 };
 
 

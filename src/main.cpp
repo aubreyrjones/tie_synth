@@ -2,13 +2,14 @@
 #include "audio/gui_gen.icc"
 
 AudioAnalyzeScope scopeTap;
-
 AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 
 #include "display.h"
 #include <MIDI.h>
 #include <Metro.h>
 #include "gui/screen.hpp"
+#include "audio/Control.hpp"
+#include "audio/va/VASynth.hpp"
 
 constexpr float hw_output_volume = 0.5f;
 
@@ -18,9 +19,6 @@ struct FastMIDIBaud {
 
 MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7);
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
-
-float curFreq = 440.f;
-float curAmp = 1.f;
 
 void setup() {
   AudioMemory(32);
@@ -35,22 +33,8 @@ void setup() {
   sgtl5000_1.inputSelect(AUDIO_INPUT_LINEIN);
   sgtl5000_1.volume(hw_output_volume);
 
-  sine1.frequency(curFreq);
-  sine1.amplitude(curAmp);
-
-  va_osc1.begin(0.5, 440, 0);
-  va_osc2.begin(0.5, 440, 0);
-
-  va_filter.frequency(4000);
-  va_filter.resonance(0.7f);
-
-  va_osc_mixer.gain(1, 0);
-  va_osc_mixer.gain(2, 0);
-  va_osc_mixer.gain(3, 0);
-
-  va_filter_mixer.gain(1, 0);
-  va_filter_mixer.gain(2, 0);
-  va_filter_mixer.gain(3, 0);
+  audio::va_module.doSetup();
+  audio::run_all_control_updates();
 
   display::initialize_oleds();
 }

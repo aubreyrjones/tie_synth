@@ -7,13 +7,35 @@
 
 namespace audio {
 
+class _ControlBase {
+protected:
+    /// Register a new control.
+    static void register_new_control(_ControlBase* control);
+
+    /// @brief Intrusive list pointer to next control, used for update/init purposes.
+    _ControlBase *next;
+
+public:
+    _ControlBase* nextControl() {
+        return next;
+    }
+
+    virtual void doUpdate() = 0;
+};
+
+/// The first control.
+_ControlBase* get_first_control();
+
+/// @brief Run the updates on all dirty controls.
+void run_all_control_updates();
+
 /**
  * This class is intended to keep the controls of a synthesizer in sync across multiple different
  * input methods. The Control itself is owned by the synth module and stores the state of the 
  * control value.
 */
 template <typename VALTYPE>
-class Control {
+class Control : public _ControlBase {
 public:
     using valtype = VALTYPE;
 
@@ -41,15 +63,21 @@ public:
 
     /// @brief Construct a Control with no update function (i.e. you'll poll the value when appropriate).
     /// @param initialValue the initial value for the control to take on.
-    Control(const char* name, valtype const& initialValue) : _name(name), value(initialValue) {}
+    Control(const char* name, valtype const& initialValue) : _name(name), value(initialValue) {
+        register_new_control(this);
+    }
 
     /// @brief Construct a Control with an update function called when this Control is dirty and `doUpdate()` is called on it.
     /// @param initialValue the initial value for the control to take on.
     /// @param onUpdate called with the updated value
-    Control(const char* name, valtype const& initialValue, update_function onUpdate) : _name(name), value(initialValue), onUpdate(onUpdate) {}
+    Control(const char* name, valtype const& initialValue, update_function onUpdate) : _name(name), value(initialValue), onUpdate(onUpdate) {
+        register_new_control(this);
+    }
     
     /// @brief Construct a Control with an update function and numerical limits.
-    Control(const char* name, valtype const& initialValue, std::tuple<valtype, valtype> const& limits, update_function onUpdate) : _name(name), value(initialValue), onUpdate(onUpdate), limits(limits) {}
+    Control(const char* name, valtype const& initialValue, std::tuple<valtype, valtype> const& limits, update_function onUpdate) : _name(name), value(initialValue), onUpdate(onUpdate), limits(limits) {
+        register_new_control(this);
+    }
 
     const char* const& name() { return _name; }
 
@@ -82,7 +110,7 @@ public:
     }
 
     /// @brief If dirty, run the update function with the current value and wash the control.
-    void doUpdate() {
+    virtual void doUpdate() override {
         if (!_dirty) return;
         if (onUpdate) 
             onUpdate.value()(value);
@@ -119,13 +147,6 @@ public:
     inline valtype const& operator*() const {
         return get();
     }
-};
-
-
-/**
- * Responsible for tracking control state and dirtiness.
-*/
-class ControlBank {
 };
 
 }
