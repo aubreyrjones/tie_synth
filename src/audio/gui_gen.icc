@@ -6,7 +6,7 @@
 
 // GUItool: begin automatically generated code
 AudioInputI2S            analog_in;           //xy=131.33331298828125,437.3333435058594
-AudioSynthWaveformModulated va_osc2;   //xy=299.33331298828125,323.33331298828125
+AudioSynthWaveform       va_osc2;   //xy=299.33331298828125,323.33331298828125
 AudioSynthWaveform       va_osc1;      //xy=304.3333282470703,255.3333282470703
 AudioSynthWaveformSine   sine1;          //xy=337.33331298828125,443.3333435058594
 AudioSynthWaveformDc     va_filter_control;            //xy=591.3333282470703,425.3333282470703

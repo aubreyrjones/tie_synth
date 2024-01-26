@@ -8,7 +8,7 @@
       
 
 extern AudioInputI2S analog_in;
-extern AudioSynthWaveformModulated va_osc2;
+extern AudioSynthWaveform va_osc2;
 extern AudioSynthWaveform va_osc1;
 extern AudioSynthWaveformSine sine1;
 extern AudioSynthWaveformDc va_filter_control;

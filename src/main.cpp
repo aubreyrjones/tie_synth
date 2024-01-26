@@ -168,7 +168,9 @@ void loop() {
   gui::activeScreen->draw();
 
   if (perfRepaint.check()){
+    main_oled.drawFastHLine(0, 128 - 10, 128, colors::white);
     perfRepaint.reset();
+    main_oled.setTextSize(1);
     main_oled.setCursor(0, 128 - 8);
     main_oled.setTextColor(colors::white, 0);
     main_oled.print("DSP:");

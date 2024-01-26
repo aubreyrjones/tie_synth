@@ -24,6 +24,8 @@ void Screen::drawHelper(const char* title, uint16_t titleColor, int titlePadding
 
 
 void Screen::flowWidgets(em::ivec const& tl, Widget* firstWidget) {
+    if (!firstWidget) return;
+
     auto start = tl.y;
     do {
         firstWidget->position({tl.x, start});
@@ -32,6 +34,7 @@ void Screen::flowWidgets(em::ivec const& tl, Widget* firstWidget) {
 }
 
 void Screen::drawWidgets(Widget* firstWidget) {
+    if (!firstWidget) return;
     do {
         firstWidget->draw(focused(*firstWidget));
     } while ( (firstWidget = firstWidget->next) );
@@ -51,14 +54,10 @@ class HomeScreen : public Screen {
     audio::Control<byte> testControl5 {"In.Lvl", 0, {0, 127}, [](byte) { } };
     audio::Control<byte> testControl6 {"Mic.Lvl", 0, {0, 127}, [](byte) { } };
 
-
-
     DualNumericalWidget<float> volumes;
     DualNumericalWidget<byte> something;
     DualNumericalWidget<byte> something2;
     DualNumericalWidget<byte> something3;
-
-
 
 public:
     HomeScreen() : 
@@ -77,12 +76,6 @@ public:
         auto start = 18;
         flowWidgets({0, start}, &volumes);
 
-        // volumes.position({0, start});
-        // something.position({0, start += volumes.height()});
-        // something2.position({0, start += something.height()});
-        // something3.position({0, start += something2.height()});
-
-
         volumes.setIncrements([](float v){ return 0.01f; }, [](float v){ return 0.01f; });
     }
 
@@ -92,23 +85,6 @@ public:
 
         drawHelper("Synthburg", cornflowerblue, 12, &volumes);
 
-        // if (!dirty) return;
-
-        // main_oled.fillScreen(0); // clear the screen
-
-        // main_oled.setCursor(12, 0);
-        // main_oled.setTextSize(2);
-        // main_oled.setTextColor(cornflowerblue);
-        // main_oled.print("Synthburg");
-
-        // drawWidgets(&volumes);
-
-        // // volumes.draw(focused(volumes));
-        // // something.draw(focused(something));
-        // // something2.draw(focused(something2));
-        // // something3.draw(focused(something3));
-
-        // dirty = false;
     }
 };
 

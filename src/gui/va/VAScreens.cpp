@@ -9,7 +9,8 @@ constexpr std::array WaveformChoices {
     std::tuple{"Tri", WAVEFORM_TRIANGLE},
     std::tuple{"Saw", WAVEFORM_BANDLIMIT_SAWTOOTH},
     std::tuple{"R.Saw", WAVEFORM_BANDLIMIT_SAWTOOTH_REVERSE},
-    std::tuple{"Square", WAVEFORM_BANDLIMIT_SQUARE}
+    std::tuple{"Square", WAVEFORM_BANDLIMIT_SQUARE},
+    std::tuple{"Pulse", WAVEFORM_BANDLIMIT_PULSE}
 };
 
 constexpr std::array FilterChoices {
@@ -53,32 +54,49 @@ struct VAScreen : public Screen {
 
     void draw() override {
         using namespace display;
-        // using namespace colors;
-
-        // if (!dirty) return;
-
-        // main_oled.fillScreen(0); // clear the screen
-
-        // main_oled.setCursor(4, 0);
-        // main_oled.setTextSize(2);
-        // main_oled.setTextColor(hotpink);
-        // main_oled.print("The VAlley");
-
-        // drawWidgets(&oscTypes);
-
-        // dirty = false;
 
         drawHelper("The VAlley", colors::hotpink, 4, &oscTypes);
     }
 } 
 mainScreen; // instance
 
+struct Osc12Screen : public Screen {
+    DualWidget<ChoiceWidget, ChoiceWidget> oscTypes;
+    DualNumericalWidget<float> phase;
+    DualNumericalWidget<float> pulseWidth;
+    
+    Osc12Screen() : 
+        Screen(), 
+        oscTypes(ChoiceWidget(audio::va_module.osc1.waveType, meta::length_erase_array(WaveformChoices)), ChoiceWidget(audio::va_module.osc2.waveType, meta::length_erase_array(WaveformChoices))),
+        phase(audio::va_module.osc1.phase, audio::va_module.osc2.phase),
+        pulseWidth(audio::va_module.osc1.pulseWidth, audio::va_module.osc2.pulseWidth)
+    {
+        oscTypes.link(phase).link(pulseWidth);
+
+        focusedWidget = &oscTypes;
+
+        flowWidgets({0, 18}, &oscTypes);
+    }
+
+    void draw() override {
+        using namespace display;
+
+        drawHelper("Osc1 Osc2", colors::hotpink, 4, &oscTypes);
+    }
+} 
+osc1Screen; // instance
+
 
 struct ScreenConstructor {
     ScreenConstructor() {
-        Screen* parent = rootScreen->zipTo(South);
+        // link our screens together
+        mainScreen.link(&osc1Screen, East);
 
+        // link to main graph
+
+        Screen* parent = rootScreen->zipTo(South);
         parent->link(&mainScreen, South);
+        
     }
 } _screenConstructor;
 
