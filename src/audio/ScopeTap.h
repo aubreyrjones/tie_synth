@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Audio.h>
+#include "../Audio/Audio.h"
 
 class AudioAnalyzeScope : public AudioStream
 {

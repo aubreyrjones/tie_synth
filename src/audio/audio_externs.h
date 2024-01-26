@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <Audio.h>
+#include "Audio/Audio.h"
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
@@ -8,7 +8,7 @@
       
 
 extern AudioInputI2S analog_in;
-extern AudioMixer4 mixer4;
+extern AudioMixer4 va_fm_mod_mixer;
 extern AudioSynthWaveform va_osc1;
 extern AudioSynthWaveform va_osc2;
 extern AudioSynthWaveformModulated va_osc3;
@@ -42,4 +42,5 @@ extern AudioConnection patchCord16;
 extern AudioConnection patchCord17;
 extern AudioConnection patchCord18;
 extern AudioConnection patchCord19;
+extern AudioConnection patchCord20;
 extern AudioControlSGTL5000 sgtl5000_1;

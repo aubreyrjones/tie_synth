@@ -1,8 +1,8 @@
 #include "audio/ScopeTap.h"
 #include "audio/gui_gen.icc"
 
-//AudioAnalyzeScope scopeTap;
-AudioConnection patchCord_0(va_osc_mixer, 0, scopeTap, 0);
+AudioAnalyzeScope scopeTap;
+AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 
 #include "display.h"
 #include <MIDI.h>

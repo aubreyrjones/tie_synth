@@ -9,9 +9,7 @@ namespace audio {
 
 class VASynth {
 public:
-    Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [](float a) { va_osc1.amplitude(a); va_osc2.amplitude(a); }};
-    Control<float> frequency {"Freq.", 440, {1, 20000}, [](float f) { va_osc1.frequency(f); va_osc2.frequency(f); }};
-    
+    // Oscillators 1 and 2 are simple waveforms.
     struct Osc {
         AudioSynthWaveform &osc;
         Osc(AudioSynthWaveform &o) : osc(o) {};
@@ -25,10 +23,37 @@ public:
         /// @brief Pulse width if pulse wave type chosen.
         Control<float> pulseWidth {"P.Width", 0.5, {0, 1}, [this](float pw) { osc.pulseWidth(pw); }};
 
+        /// @brief How many cents to detune the pitch.
+        Control<int> detune {"Detune", 0, {-10, 10}};
+
         /// @brief Set the amplitude of the wave.
         Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [this](float a) { osc.amplitude(a); }};
 
     } osc1{va_osc1}, osc2{va_osc2};
+
+
+    // Oscillator 3 is capable of basic FM, feeding from input or Osc 2.
+    struct FMOsc {
+        AudioSynthWaveformModulated &osc;
+        FMOsc(AudioSynthWaveformModulated &o) : osc(o) {};
+
+        /// @brief Wavetype of oscillator.
+        Control<int> waveType {"Type", 0, {0, 12}, [this](int choice) { osc.begin(choice); }};
+
+        /// @brief How many cents to detune the pitch.
+        Control<int> detune {"Detune", 0, {-10, 10}};
+
+        /// @brief Set the amplitude of the wave.
+
+        Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [this](float a) { osc.amplitude(a); }};
+
+        Control<float> osc1Level {"FM.Osc1", 0, {0, 1}, [this](float l) { va_fm_mod_mixer.gain(0, l); }};
+        Control<float> osc2Level {"FM.Osc2", 0, {0, 1}, [this](float l) { va_fm_mod_mixer.gain(1, l); }};
+        Control<float> inLLevel {"FM.InL", 0, {0, 1}, [this](float l) { va_fm_mod_mixer.gain(2, l); }};
+        Control<float> inRLevel {"FM.InR", 0, {0, 1}, [this](float l) { va_fm_mod_mixer.gain(3, l); }};
+
+
+    } osc3{va_osc3};
 
     Control<int> osc1Type {"Type.Osc1", 0, {0, 12}, [](int choice) { va_osc1.begin(choice); }};
     Control<int> osc2Type {"Type.Osc2", 0, {0, 12}, [](int choice) { va_osc2.begin(choice); }};
@@ -38,6 +63,13 @@ public:
         va_osc_mixer.gain(0, 1.f - mix);
         va_osc_mixer.gain(1, mix);
     }};
+
+    struct OscMix {
+        Control<float> osc1 {"Mix.Osc1", 1, {0, 1}, [this](float l) { va_osc_mixer.gain(0, l); }};
+        Control<float> osc2 {"Mix.Osc2", 0, {0, 1}, [this](float l) { va_osc_mixer.gain(1, l); }};
+        Control<float> osc3 {"Mix.Osc3", 0, {0, 1}, [this](float l) { va_osc_mixer.gain(2, l); }};
+    } mix;
+
 
     /// @brief The cutoff frequency of the filter.
     Control<float> filterCutoffFreq {"Cutoff", 4000, {20, 20000}, [](float freq) { va_filter.frequency(freq); } };
@@ -65,7 +97,16 @@ public:
         va_filter_mixer.gain(2, hg);
     }};
 
+    Control<float> wavefolderAmount {"Wavefold", 0.05f, {0.05f, 1.f}, [](float a) { va_wavefolder_control.amplitude(a); }};
+
     Control<int> dummyContrl {"Dummy", 0};
+
+    Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [](float a) { va_osc1.amplitude(a); va_osc2.amplitude(a); }};
+
+    /// Set the overall frequency for the VA module.
+    Control<float> frequency {"Freq.", 440, {1, 20000}, [](float f) { 
+        va_osc1.frequency(f); va_osc2.frequency(f); 
+    }};
 
     /// @brief Set up things not handled by Controls.
     void doSetup();

@@ -21,29 +21,27 @@ constexpr std::array FilterChoices {
 
 struct VAScreen : public Screen {
 
-    DualWidget<ChoiceWidget, ChoiceWidget> oscTypes;
-    DualNumericalWidget<float> mixAndFreq;
+    DualNumericalWidget<float> mixOsc12;
+    DualNumericalWidget<float> mixOsc34;
     DualNumericalWidget<float> filterSettings;
-    DualWidget<ChoiceWidget, NumericalWidget<int>> filterType;
+    DualWidget<ChoiceWidget, NumericalWidget<float>> filterType;
 
     VAScreen() : 
-        Screen(), 
-        oscTypes(ChoiceWidget(audio::va_module.osc1Type, meta::length_erase_array(WaveformChoices)), ChoiceWidget(audio::va_module.osc2Type, meta::length_erase_array(WaveformChoices))), 
-        mixAndFreq(audio::va_module.osc12Mix, audio::va_module.frequency),
+        Screen(),
+        mixOsc12(audio::va_module.mix.osc1, audio::va_module.mix.osc2),
+        mixOsc34(audio::va_module.mix.osc3, audio::va_module.wavefolderAmount),
         filterSettings(audio::va_module.filterCutoffFreq, audio::va_module.filterResonance),
-        filterType(ChoiceWidget(audio::va_module.filterSwitch, meta::length_erase_array(FilterChoices)), NumericalWidget(audio::va_module.dummyContrl))
+        filterType(ChoiceWidget(audio::va_module.filterSwitch, meta::length_erase_array(FilterChoices)), NumericalWidget(audio::va_module.frequency))
         
     {
-        oscTypes.link(mixAndFreq).link(filterType).link(filterSettings);
+        mixOsc12.link(mixOsc34).link(filterType).link(filterSettings);
 
-        focusedWidget = &oscTypes;
+        focusedWidget = &mixOsc12;
 
-        flowWidgets({0, 18}, &oscTypes);
+        flowWidgets({0, 18}, &mixOsc12);
 
-        mixAndFreq.setIncrements(
-            [](float v){ return 0.01f; },
-            [](float v){ return 1.f; }
-        );
+        mixOsc12.setIncrements(audio::small_f, audio::small_f);
+        mixOsc34.setIncrements(audio::small_f, audio::small_f);
 
         filterSettings.setIncrements(
             [](float v){ return 10.f; },
@@ -55,7 +53,7 @@ struct VAScreen : public Screen {
     void draw() override {
         using namespace display;
 
-        drawHelper("The VAlley", colors::hotpink, 4, &oscTypes);
+        drawHelper("The VAlley", colors::hotpink, 4, &mixOsc12);
     }
 } 
 mainScreen; // instance
@@ -64,16 +62,28 @@ struct Osc12Screen : public Screen {
     DualWidget<ChoiceWidget, ChoiceWidget> oscTypes;
     DualNumericalWidget<float> phase;
     DualNumericalWidget<float> pulseWidth;
+    DualNumericalWidget<int> detune;
     
     Osc12Screen() : 
         Screen(), 
         oscTypes(ChoiceWidget(audio::va_module.osc1.waveType, meta::length_erase_array(WaveformChoices)), ChoiceWidget(audio::va_module.osc2.waveType, meta::length_erase_array(WaveformChoices))),
         phase(audio::va_module.osc1.phase, audio::va_module.osc2.phase),
-        pulseWidth(audio::va_module.osc1.pulseWidth, audio::va_module.osc2.pulseWidth)
+        pulseWidth(audio::va_module.osc1.pulseWidth, audio::va_module.osc2.pulseWidth),
+        detune(audio::va_module.osc1.detune, audio::va_module.osc2.detune)
+
     {
         oscTypes.link(phase).link(pulseWidth);
 
         focusedWidget = &oscTypes;
+
+        // phase.setIncrements(
+
+        // );
+
+        pulseWidth.setIncrements(
+            [](float v){ return 0.01f; },
+            [](float v){ return 0.01f; }
+        );
 
         flowWidgets({0, 18}, &oscTypes);
     }
