@@ -52,7 +52,7 @@ struct VAScreen : public Screen {
     }
 
     void draw() override {
-        // using namespace display;
+        using namespace display;
         // using namespace colors;
 
         // if (!dirty) return;

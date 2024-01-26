@@ -12,6 +12,7 @@ AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 #include "audio/va/VASynth.hpp"
 
 constexpr float hw_output_volume = 0.5f;
+constexpr size_t n_audio_blocks_allocated = 64;
 
 struct FastMIDIBaud {
   static const long BaudRate = 1000000;
@@ -21,7 +22,7 @@ MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
 
 void setup() {
-  AudioMemory(32);
+  AudioMemory(n_audio_blocks_allocated);
   randomSeed(analogRead(0));
 
   Serial.begin(38400);                  // terminal with computer
@@ -101,6 +102,7 @@ bool handle_nav_arrows(int cc, bool push) {
 
 Metro blankTimeout(60000); // 1 minute screen sleep timer
 Metro scopeRepaint(40); // 25fps
+Metro perfRepaint(100);
 
 bool blankMode = false;
 
@@ -164,4 +166,20 @@ void loop() {
   }
 
   gui::activeScreen->draw();
+
+  if (perfRepaint.check()){
+    perfRepaint.reset();
+    main_oled.setCursor(0, 128 - 8);
+    main_oled.setTextColor(colors::white, 0);
+    main_oled.print("DSP:");
+    main_oled.print(AudioProcessorUsage(), 2);
+    main_oled.print("%");
+
+    main_oled.setCursor(64, 128 - 8);
+    main_oled.print("Mem:");
+    main_oled.print(AudioMemoryUsage());
+    main_oled.print("(");
+    main_oled.print(AudioMemoryUsageMax());
+    main_oled.print(")");
+  }
 }
