@@ -32,7 +32,7 @@
 #include "output_spdif3.h"
 
 #include "biquad.h"
-#include <utility/imxrt_hw.h>
+#include "utility/imxrt_hw.h"
 //Parameters
 namespace {
 	#define SPDIF_RX_BUFFER_LENGTH AUDIO_BLOCK_SAMPLES
