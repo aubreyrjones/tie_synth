@@ -19,7 +19,7 @@ target_lines = lines[(first_line + 1) : last_line]
 
 print("""#pragma once
 #include <Arduino.h>
-#include "Audio/Audio.h"
+#include "../ext/Audio/Audio.h"
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
