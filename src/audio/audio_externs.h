@@ -8,11 +8,15 @@
       
 
 extern AudioInputI2S analog_in;
-extern AudioSynthWaveform va_osc2;
+extern AudioMixer4 mixer4;
 extern AudioSynthWaveform va_osc1;
-extern AudioSynthWaveformSine sine1;
-extern AudioSynthWaveformDc va_filter_control;
+extern AudioSynthWaveform va_osc2;
+extern AudioSynthWaveformModulated va_osc3;
 extern AudioMixer4 va_osc_mixer;
+extern AudioEffectWaveshaper va_waveshape;
+extern AudioSynthWaveformDc va_wavefolder_control;
+extern AudioEffectWaveFolder va_wavefolder;
+extern AudioSynthWaveformDc va_filter_control;
 extern AudioFilterStateVariable va_filter;
 extern AudioMixer4 va_filter_mixer;
 extern AudioAmplifier va_breath_amp;
@@ -33,4 +37,9 @@ extern AudioConnection patchCord11;
 extern AudioConnection patchCord12;
 extern AudioConnection patchCord13;
 extern AudioConnection patchCord14;
+extern AudioConnection patchCord15;
+extern AudioConnection patchCord16;
+extern AudioConnection patchCord17;
+extern AudioConnection patchCord18;
+extern AudioConnection patchCord19;
 extern AudioControlSGTL5000 sgtl5000_1;

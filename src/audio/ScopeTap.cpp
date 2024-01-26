@@ -7,6 +7,7 @@ AudioAnalyzeScope::AudioAnalyzeScope() : AudioStream(1, inputQueueArray) {
 
 void AudioAnalyzeScope::update(void) {
     audio_block_t* input = receiveReadOnly(0);
+    if (!input) return;
 
     memcpy(lastFrame, input, sizeof(int16_t) * AUDIO_BLOCK_SAMPLES);
 

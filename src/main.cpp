@@ -1,8 +1,8 @@
 #include "audio/ScopeTap.h"
 #include "audio/gui_gen.icc"
 
-AudioAnalyzeScope scopeTap;
-AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
+//AudioAnalyzeScope scopeTap;
+AudioConnection patchCord_0(va_osc_mixer, 0, scopeTap, 0);
 
 #include "display.h"
 #include <MIDI.h>
@@ -24,6 +24,8 @@ MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMID
 void setup() {
   AudioMemory(n_audio_blocks_allocated);
   randomSeed(analogRead(0));
+
+  Serial.print("Startup.");
 
   Serial.begin(38400);                  // terminal with computer
   serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it out ourselves.
