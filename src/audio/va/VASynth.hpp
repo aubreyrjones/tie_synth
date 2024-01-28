@@ -44,7 +44,6 @@ public:
         Control<int> detune {"Detune", 0, {-10, 10}};
 
         /// @brief Set the amplitude of the wave.
-
         Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [this](float a) { osc.amplitude(a); }};
 
         Control<float> osc1Level {"FM.Osc1", 0, {0, 1}, [this](float l) { va_fm_mod_mixer.gain(0, l); }};
@@ -101,11 +100,17 @@ public:
 
     Control<int> dummyContrl {"Dummy", 0};
 
-    Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [](float a) { va_osc1.amplitude(a); va_osc2.amplitude(a); }};
+    Control<float> amplitude {"Amp.", 0.8, {0.01, 1}, [](float a) { 
+        va_osc1.amplitude(a); 
+        va_osc2.amplitude(a); 
+        va_osc3.amplitude(a);
+    }};
 
     /// Set the overall frequency for the VA module.
-    Control<float> frequency {"Freq.", 440, {1, 20000}, [](float f) { 
-        va_osc1.frequency(f); va_osc2.frequency(f); 
+    Control<float> frequency {"Freq.", 440, {1, 20000}, [this](float f) { 
+        va_osc1.frequency(f + *osc1.detune); 
+        va_osc2.frequency(f + *osc2.detune); 
+        va_osc3.frequency(f + *osc3.detune);
     }};
 
     /// @brief Set up things not handled by Controls.

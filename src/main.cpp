@@ -33,7 +33,7 @@ void setup() {
   // Set up sound chips.
   sgtl5000_1.setAddress(LOW);
   sgtl5000_1.enable();
-  sgtl5000_1.inputSelect(AUDIO_INPUT_LINEIN);
+  sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
   sgtl5000_1.volume(hw_output_volume);
 
   audio::va_module.doSetup();
