@@ -30,6 +30,8 @@ print("""#pragma once
 name_regex = re.compile(r"^\w+")
 
 for l in target_lines:
+    if not l.strip():
+        continue
     tokens = l.split()
     name = name_regex.search(tokens[1]).group()
     print(f"extern {tokens[0]} {name};")

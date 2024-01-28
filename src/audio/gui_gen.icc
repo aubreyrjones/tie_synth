@@ -5,41 +5,44 @@
 #include <SerialFlash.h>
 
 // GUItool: begin automatically generated code
-AudioInputI2S            analog_in;           //xy=94.33331298828125,477.3333435058594
-AudioMixer4              va_fm_mod_mixer;         //xy=287.3333282470703,477.3333435058594
-AudioSynthWaveform       va_osc1;      //xy=439.33331298828125,295.33331298828125
-AudioSynthWaveform       va_osc2; //xy=439.33331298828125,345.3333435058594
-AudioSynthWaveformModulated va_osc3;   //xy=442.33331298828125,426.33331298828125
-AudioMixer4              va_osc_mixer;         //xy=694.3333129882812,311.3333435058594
-AudioEffectWaveshaper    va_waveshape;     //xy=869.3333129882812,295.3333435058594
-AudioSynthWaveformDc     va_wavefolder_control;            //xy=945.3333129882812,354.3333435058594
-AudioEffectWaveFolder    va_wavefolder;    //xy=1062.3333740234375,300.3333435058594
-AudioSynthWaveformDc     va_filter_control;            //xy=1149.3333740234375,436.33331298828125
-AudioFilterStateVariable va_filter;        //xy=1221.3333129882812,376.33331298828125
-AudioMixer4              va_filter_mixer;         //xy=1446.3333740234375,379.33331298828125
-AudioAmplifier           va_breath_amp;           //xy=1661.3333740234375,379.33331298828125
-AudioMixer4              output_mixer;         //xy=1834.3333740234375,661.333251953125
-AudioAmplifier           output_amp;           //xy=2016.3333740234375,660.3332214355469
-AudioOutputI2S           analog_out;           //xy=2227.3333740234375,660.333251953125
-AudioConnection          patchCord1(analog_in, 0, va_fm_mod_mixer, 1);
-AudioConnection          patchCord2(analog_in, 1, va_fm_mod_mixer, 2);
+AudioInputI2S            analog_in;      //xy=116,737
+AudioMixer4              va_fm_mod_mixer; //xy=333,724
+AudioSynthWaveform       va_osc1;        //xy=485,542
+AudioSynthWaveform       va_osc2;        //xy=485,592
+AudioSynthWaveformModulated va_osc3;        //xy=488,673
+AudioMixer4              va_osc_mixer;   //xy=740,558
+AudioEffectWaveshaper    va_waveshape;   //xy=915,542
+AudioSynthWaveformDc     va_wavefolder_control; //xy=991,601
+AudioEffectWaveFolder    va_wavefolder;  //xy=1108,547
+AudioSynthWaveformDc     va_filter_control; //xy=1195,683
+AudioFilterStateVariable va_filter;      //xy=1267,623
+AudioSynthAdditive       additive1;      //xy=1344.3333740234375,905.3333129882812
+AudioMixer4              va_filter_mixer; //xy=1492,626
+AudioAmplifier           va_breath_amp;  //xy=1707,626
+AudioMixer4              output_mixer;   //xy=1880,908
+AudioAmplifier           output_amp;     //xy=2062,907
+AudioOutputI2S           analog_out;     //xy=2273,907
+AudioConnection          patchCord1(analog_in, 0, va_fm_mod_mixer, 2);
+AudioConnection          patchCord2(analog_in, 1, va_fm_mod_mixer, 3);
 AudioConnection          patchCord3(va_fm_mod_mixer, 0, va_osc3, 0);
-AudioConnection          patchCord4(va_osc1, 0, va_osc_mixer, 0);
-AudioConnection          patchCord5(va_osc2, 0, va_osc_mixer, 1);
-AudioConnection          patchCord6(va_osc2, 0, va_fm_mod_mixer, 0);
-AudioConnection          patchCord7(va_osc3, 0, va_osc_mixer, 2);
-AudioConnection          patchCord8(va_osc_mixer, va_waveshape);
-AudioConnection          patchCord9(va_waveshape, 0, va_wavefolder, 0);
-AudioConnection          patchCord10(va_wavefolder_control, 0, va_wavefolder, 1);
-AudioConnection          patchCord11(va_wavefolder, 0, va_filter, 0);
-AudioConnection          patchCord12(va_filter_control, 0, va_filter, 1);
-AudioConnection          patchCord13(va_filter, 0, va_filter_mixer, 0);
-AudioConnection          patchCord14(va_filter, 1, va_filter_mixer, 1);
-AudioConnection          patchCord15(va_filter, 2, va_filter_mixer, 2);
-AudioConnection          patchCord16(va_filter_mixer, va_breath_amp);
-AudioConnection          patchCord17(va_breath_amp, 0, output_mixer, 0);
-AudioConnection          patchCord18(output_mixer, output_amp);
-AudioConnection          patchCord19(output_amp, 0, analog_out, 0);
-AudioConnection          patchCord20(output_amp, 0, analog_out, 1);
-AudioControlSGTL5000     sgtl5000_1;     //xy=110.33332824707031,58.333335876464844
+AudioConnection          patchCord4(va_osc1, 0, va_fm_mod_mixer, 0);
+AudioConnection          patchCord5(va_osc1, 0, va_osc_mixer, 0);
+AudioConnection          patchCord6(va_osc2, 0, va_osc_mixer, 1);
+AudioConnection          patchCord7(va_osc2, 0, va_fm_mod_mixer, 1);
+AudioConnection          patchCord8(va_osc3, 0, va_osc_mixer, 2);
+AudioConnection          patchCord9(va_osc_mixer, va_waveshape);
+AudioConnection          patchCord10(va_waveshape, 0, va_wavefolder, 0);
+AudioConnection          patchCord11(va_wavefolder_control, 0, va_wavefolder, 1);
+AudioConnection          patchCord12(va_wavefolder, 0, va_filter, 0);
+AudioConnection          patchCord13(va_filter_control, 0, va_filter, 1);
+AudioConnection          patchCord14(va_filter, 0, va_filter_mixer, 0);
+AudioConnection          patchCord15(va_filter, 1, va_filter_mixer, 1);
+AudioConnection          patchCord16(va_filter, 2, va_filter_mixer, 2);
+AudioConnection          patchCord17(additive1, 0, output_mixer, 1);
+AudioConnection          patchCord18(va_filter_mixer, va_breath_amp);
+AudioConnection          patchCord19(va_breath_amp, 0, output_mixer, 0);
+AudioConnection          patchCord20(output_mixer, output_amp);
+AudioConnection          patchCord21(output_amp, 0, analog_out, 0);
+AudioConnection          patchCord22(output_amp, 0, analog_out, 1);
+AudioControlSGTL5000     sgtl5000_1;     //xy=156,305
 // GUItool: end automatically generated code

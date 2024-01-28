@@ -3,9 +3,13 @@
 
 namespace colors {
 
-constexpr uint16_t white = 0xffff;
-constexpr uint16_t black = 0;
-constexpr uint16_t cornflowerblue = 0x64bd;
-constexpr uint16_t hotpink = 0xfb56;
+using Color = uint16_t;
+
+constexpr Color white = 0xffff;
+constexpr Color black = 0;
+constexpr Color cornflowerblue = 0x64bd;
+constexpr Color hotpink = 0xfb56;
+constexpr Color darkorange = 0xfc60;
+constexpr Color darkgrey = 0xad55;
 
 }

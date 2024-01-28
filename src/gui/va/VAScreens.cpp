@@ -19,7 +19,7 @@ constexpr std::array FilterChoices {
     std::tuple{"HighP", 2}
 };
 
-struct VAScreen : public Screen {
+static struct VAScreen : public Screen {
 
     DualNumericalWidget<float> mixOsc12;
     DualNumericalWidget<float> mixOsc34;
@@ -58,7 +58,7 @@ struct VAScreen : public Screen {
 } 
 mainScreen; // instance
 
-struct Osc12Screen : public Screen {
+static struct Osc12Screen : public Screen {
     DualWidget<ChoiceWidget, ChoiceWidget> oscTypes;
     DualNumericalWidget<float> phase;
     DualNumericalWidget<float> pulseWidth;
@@ -96,7 +96,7 @@ struct Osc12Screen : public Screen {
 } 
 osc1Screen; // instance
 
-struct Osc3Screen : public Screen {
+static struct Osc3Screen : public Screen {
     DualWidget<ChoiceWidget, NumericalWidget<int>> oscTypes;
     DualNumericalWidget<float> mixRow0;
     DualNumericalWidget<float> mixRow1;
@@ -127,7 +127,7 @@ struct Osc3Screen : public Screen {
 osc3Screen; // instance
 
 
-struct ScreenConstructor {
+static struct ScreenConstructor {
     ScreenConstructor() {
         // link our screens together
         mainScreen.link(&osc1Screen, East);

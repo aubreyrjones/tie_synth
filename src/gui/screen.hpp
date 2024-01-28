@@ -464,7 +464,7 @@ public:
     }
 
     /// @brief Scroll to the next widget.
-    void nextWidget() {
+    virtual void nextWidget() {
         if (!focusedWidget) return;
         if (focusedWidget->next) {
             focusedWidget->draw(false);
@@ -474,7 +474,7 @@ public:
     }
 
     /// @brief Scroll to the previous widget.
-    void prevWidget() {
+    virtual void prevWidget() {
         if (!focusedWidget) return;
         if (focusedWidget->prev) {
             focusedWidget->draw(false);

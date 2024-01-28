@@ -49,26 +49,28 @@ class HomeScreen : public Screen {
 
     audio::Control<byte> testControl1 {"Hi", 0, {0, 255}, [](byte) { } };
     audio::Control<byte> testControl2 {"Katie", 0, {0, 127}, [](byte) { } };
-    audio::Control<byte> testControl3 {"VA.Lvl", 0, {0, 127}, [](byte) { } };
-    audio::Control<byte> testControl4 {"Grn.Lvl", 0, {0, 127}, [](byte) { } };
+
+    audio::Control<float> mixVA {"Mix.VA", 0, {0, 1}, [](float g) { output_mixer.gain(0, g); } };
+    audio::Control<float> mixAdditive {"Mix.Add", 1, {0, 1}, [](float g) { output_mixer.gain(1, g);} };
+    
     audio::Control<byte> testControl5 {"In.Lvl", 0, {0, 127}, [](byte) { } };
     audio::Control<byte> testControl6 {"Mic.Lvl", 0, {0, 127}, [](byte) { } };
 
     DualNumericalWidget<float> volumes;
     DualNumericalWidget<byte> something;
-    DualNumericalWidget<byte> something2;
+    DualNumericalWidget<float> mixVAAdditive;
     DualNumericalWidget<byte> something3;
 
 public:
     HomeScreen() : 
         volumes(headphoneVolume, lineoutVolume), 
         something(testControl1, testControl2),
-        something2(testControl3, testControl4),
+        mixVAAdditive(mixVA, mixAdditive),
         something3(testControl5, testControl6){
 
         volumes.link(something);
-        something.link(something2);
-        something2.link(something3);
+        something.link(mixVAAdditive);
+        mixVAAdditive.link(something3);
 
         focusedWidget = &volumes;
 
@@ -76,7 +78,8 @@ public:
         auto start = 18;
         flowWidgets({0, start}, &volumes);
 
-        volumes.setIncrements([](float v){ return 0.01f; }, [](float v){ return 0.01f; });
+        volumes.setIncrements(audio::small_f, audio::small_f);
+        mixVAAdditive.setIncrements(audio::small_f, audio::small_f);
     }
 
     void draw() {
