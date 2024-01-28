@@ -23,7 +23,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 #ifndef Audio_h_
 #define Audio_h_
 
@@ -138,5 +137,6 @@
 #include "synth_simple_drum.h"
 #include "synth_pwm.h"
 #include "synth_wavetable.h"
+#include "synth_additive.h"
 
 #endif
