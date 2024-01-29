@@ -13,16 +13,16 @@ struct NCO {
 	uint32_t phase_increment = 0;
 	uint32_t phase_offset = 0;
     float frequency = 440;
-    float outputSampleRate = AUDIO_SAMPLE_RATE_EXACT;
+    float outputSampleRate;
     float halfRate, sampleRatePhaseIncrementConstant;
     
     float* table;
 
-    NCO(float outputRate, float* table) : table(table) {
+    inline NCO(float outputRate, float* table) : table(table) {
         setOutputRate(outputRate);
     }
 
-    void setOutputRate(float rate) {
+    inline void setOutputRate(float rate) {
         outputSampleRate = rate;
         halfRate = rate / 2.f;
         sampleRatePhaseIncrementConstant = 4294967296.0f / rate;
@@ -30,21 +30,22 @@ struct NCO {
         setFrequency(frequency); // reset our frequency control words
     }
 
-    void setFrequency(float freq) {
+    inline void setFrequency(float freq) {
+        frequency = freq;
         if (freq < 0.0f) {
 			freq = 0.0;
 		} else if (freq > halfRate) { // no frequency above nyquist
 			freq = halfRate;
 		}
-		phase_increment = freq * (4294967296.0f / AUDIO_SAMPLE_RATE_EXACT);
+		phase_increment = freq * (4294967296.0f / outputSampleRate);
 		if (phase_increment > 0x7FFE0000u) phase_increment = 0x7FFE0000;
     }
 
-    void step() {
+    inline void step() {
         phase_accumulator += phase_increment;
     }
 
-    float sample() {
+    inline float sample() {
         auto index = phase_accumulator >> 24; // index into 256-entry table.
         auto residue = (phase_accumulator & 0x0fff) / (float) 0x0fff; // interpolation factor
         
@@ -76,12 +77,21 @@ public:
     AudioSynthAdditive(void) : AudioStream(0, NULL), sampler(AUDIO_SAMPLE_RATE_EXACT, signal.data()) {
         arm_rfft_fast_init_f32(&fftInstance, signal_table_size);
 
-        partialTable[2] = 100.0f;
+        partialTable[2] = 100;
+        
+        // for (int i = 0; i < signal_table_size; i++) {
+        //     if (i % 9) signal[i] = 1;
+        //     else signal[i] = -1;
+        // }
+
+        // arm_rfft_fast_f32(&fftInstance, signal.data(), partialTable.data(), 0);
     }
 
     /// @brief Get a reference to the partial array.
     /// @return A mutable reference to the partial array.
     std::array<float, partial_table_size>& partials() { return partialTable; }
+
+    std::array<float, signal_table_size>& samples() { return signal; }
 
     void frequency(float freq) { sampler.setFrequency(freq); }
 
