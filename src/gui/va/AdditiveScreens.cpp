@@ -3,6 +3,7 @@
 
 namespace gui {
 
+
 static struct AdditiveScreen : public Screen {
 
     DualWidget<NumericalWidget<float>, NumericalWidget<float>> filterTypeFreq;
@@ -32,6 +33,8 @@ static struct PartialEditor : public Screen {
     PartialEditor() : Screen()
     {}
 
+    virtual bool showPerf() override { return false; }
+
     void draw() override {
         using namespace display;
 
@@ -51,31 +54,23 @@ static struct PartialEditor : public Screen {
             main_oled.drawFastHLine(0, yh, 128, colors::darkgrey);
 
             for (int i = 0; i < 32; i++) {
-                float s = audio::as_module.partials()[partial * 2];
-                float sp = sqrtf(abs(s)) / 10.f;
+                auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[partial * 2]);
+                auto polar = em::to_polar(part);
+                float r = std::get<0>(polar);
+                float phase = std::get<1>(polar);
 
-                int boxHeight = sp * 15;
                 if (partial == selectedPartial) 
                     main_oled.drawRect(i * 4, y, 4, 32, colors::cornflowerblue);
 
-                if (s < 0) {
-                    main_oled.fillRect(i * 4 + 1, yh, 2, boxHeight, colors::darkorange);
-                }
-                else {
-                    main_oled.fillRect(i * 4 + 1, yh - boxHeight, 2, boxHeight, colors::darkorange);
-                }
+                int boxHeight = (r / 100) * 15;
+                main_oled.fillRect(i * 4 + 1, yh - boxHeight, 2, boxHeight, colors::darkorange);
+
+                boxHeight = (phase / PI) * 8;
+                main_oled.fillRect(i * 4 + 1, yh + 8, 2, boxHeight, colors::hotpink);
 
                 partial++;
             }
         }
-
-        main_oled.setCursor(128 - 64, 0);
-        main_oled.setTextColor(colors::white, colors::black);
-        
-        float& s = audio::as_module.partials()[selectedPartial * 2];
-        float sp = copysignf(sqrtf(abs(s)), s);
-
-        main_oled.print(sp);
 
         dirty = false;
     }
@@ -92,37 +87,40 @@ static struct PartialEditor : public Screen {
     }
 
     virtual void handleInput(WidgetInput const& event) {
-        float& s = audio::as_module.partials()[selectedPartial * 2];
-        float sp = abs(s) > 1 ? copysignf(sqrtf(abs(s)), s) : s;
+        auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[selectedPartial * 2]);
+
+        auto polar = em::to_polar(part);
+
+        float r = std::get<0>(polar);
+        float phase = std::get<1>(polar);
 
         if (event == WidgetInput::RIGHT_DECR) {
-            sp = em::clamp_incr(-10.f, sp, 10.f, -0.2f);
+            r = em::clamp_incr(0, r, 100.f, 0.05f + r * -0.2f);
         }
         else if (event == WidgetInput::RIGHT_INCR) {
-            sp = em::clamp_incr(-10.f, sp, 10.f, 0.2f);
+            r = em::clamp_incr(0, r, 100.f, 0.05f + r * 0.2f);
         }
         else if (event == WidgetInput::RIGHT_REL) {
-            sp = 0;   
+            r = 0;
+            phase = 0;
         }
 
-        s = abs(sp) > 1 ? copysignf(sp * sp, sp) : sp;
+        constexpr float phaseIncr = PI / 32.f;
 
-        constexpr float phaseIncr = 1.f; //PI / 8.f;
-
-        float& p = audio::as_module.partials()[selectedPartial * 2 + 1];
-        if (event == WidgetInput::LEFT_DECR) {
-            p -= phaseIncr;
+        if (event == WidgetInput::LEFT_INCR) {
+            phase -= phaseIncr;
         }
-        else if (event == WidgetInput::LEFT_INCR) {
-            p += phaseIncr;
+        else if (event == WidgetInput::LEFT_DECR) {
+            phase += phaseIncr;
         }
         else if (event == WidgetInput::LEFT_REL) {
-            p = 0;
+            phase = 0;
         }
+
+        part = em::to_cartesean({r, phase});
 
         sully();
     }
-
 
 } partialEditor;
 

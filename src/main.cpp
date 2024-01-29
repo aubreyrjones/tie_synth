@@ -155,6 +155,7 @@ void loop() {
     scope_oled.clearBuffer();
     for (int i = 0; i < 128; i++) {
       float s = scopeTap.lastFrame[i] / 65536.f;
+      //float s = additive1.samples()[i];
       u8g2_uint_t height = abs(s) * 64;
       if (s > 0) {
         // scope_oled.drawVLine(i, 31, height);
@@ -170,8 +171,10 @@ void loop() {
   gui::activeScreen->draw();
 
   if (perfRepaint.check()){
-    main_oled.drawFastHLine(0, 128 - 10, 128, colors::white);
     perfRepaint.reset();
+    if (!gui::activeScreen->showPerf()) return;
+
+    main_oled.drawFastHLine(0, 128 - 10, 128, colors::white);
     main_oled.setTextSize(1);
     main_oled.setCursor(0, 128 - 8);
     main_oled.setTextColor(colors::white, 0);

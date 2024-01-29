@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cmath>
+#include <tuple>
 
 using byte = uint8_t;
 
@@ -71,6 +73,31 @@ T clamp_incr(L const& low, T const& val, H const& high, I const& increment) {
 
 inline int center(int item, int space) {
     return (space / 2) - (item / 2);
+}
+
+/// @brief Convert complex number to polar representation.
+inline std::tuple<float, float> to_polar(std::tuple<float, float> const& z) {
+    using std::get;
+    float a = get<0>(z), b = get<1>(z);
+
+    float r = sqrtf(pow(a, 2) + pow(b, 2));
+    float theta = atan2f(b, a);
+    return {r, theta};
+}
+
+inline std::tuple<float, float> to_cartesean(std::tuple<float, float> const& p) {
+    using std::get;
+    float r = get<0>(p), th = get<1>(p);
+
+    float real = r * cosf(th);
+    float im = r * sinf(th);
+
+    return {real, im};
+}
+
+inline float exp_incr(float curVal) {
+    if (abs(curVal) < 1) return 1.f;
+    return copysign(pow(curVal, 2), curVal);
 }
 
 }

@@ -492,6 +492,8 @@ public:
         }
     }
 
+    virtual bool showPerf() { return true; }
+
     void flowWidgets(em::ivec const& tl, Widget* firstWidget);
     void drawWidgets(Widget* firstWidget);
 

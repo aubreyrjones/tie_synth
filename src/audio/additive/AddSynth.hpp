@@ -8,7 +8,7 @@
 namespace audio {
 
 struct AdditiveSynth {
-    Control<float> frequency {"Freq.", 440, {1, 20000}, [this](float f) {
+    Control<float> frequency {"Freq.", 689, {1, 20000}, [this](float f) {
         additive1.frequency(f);
     }};
 
