@@ -49,6 +49,12 @@ float window(float m, int M, bool debugFlag) {
     return 0;
 }
 
+double mod(double x, int m) {
+    double intPart;
+    double fracPart = modf(x, &intPart);
+    double v = ((int) intPart % m) + fracPart;
+    return v;
+}
 
 float mod(float x, int m) {
     float intPart;
@@ -60,7 +66,30 @@ int shrage(int a, int z, int m) {
     int q = (float) m / a;
     auto r = m % a;
 
-    return a * (z % q) - r * (int)(z / q);
+    Serial.print("a:");
+    Serial.print(a);
+    Serial.print(" z:");
+    Serial.print(z);
+    Serial.print(" m:");
+    Serial.print(m);
+    Serial.print(" q:");
+    Serial.print(q);
+    Serial.print(" r:");
+    Serial.print(r);
+    
+
+    auto zmodq = z % q;
+    auto zoverq = z / q;
+
+    Serial.print(" zq:");
+    Serial.print(zmodq);
+    Serial.print(" z/q:");
+    Serial.println(zoverq);
+
+    auto v = a * zmodq - r * (int)(zoverq);
+
+    if (v < 0) return v + m;
+    return v;
 }
 
 void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, unsigned int phase, bool debugFlag) {
@@ -70,12 +99,10 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
     const float sincScale = min(inputSampleRate, outputSampleRate) / inputSampleRate;
     const float sampleRatio = inputSampleRate / outputSampleRate;
 
-    //float phContrib = mod(phase * sampleRatio, input.len);
+    float phContrib = 0;
 
-    const auto phaseInRate = shrage(inputSampleRate, phase, input.len);
-    float phContrib = phaseInRate / outputSampleRate;
-    float lastPhase = phContrib;
-
+    //phContrib = mod(phase * (double) sampleRatio, input.len); // do this as a double to capture big phase.
+    
     for (int j = 0; j < output.len; j++) {
 
         float Ji = mod(j * sampleRatio, input.len) + phContrib;
