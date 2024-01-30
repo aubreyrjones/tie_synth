@@ -69,18 +69,10 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
     for (int j = 0; j < output.len; j++) {
         float accum = 0;
 
-        float J = (j + phase) * sampleRatio;
+        float J = (j * sampleRatio) + (phase * sampleRatio);
         int kLow = ceilf(J - halfWindow);
         int kHigh = floorf(J + halfWindow);
-        int ki = kLow;
-
-        // float phContrib = (j + phase) * sampleRatio; //mod(phase * sampleRatio, input.len);
-        // float Ji = 0 + phContrib;
-        // int ki = (int) ceilf(Ji - halfWindow);
-
-        // for (int k = kLow, ki = 0; k <= kHigh; k++, ki++) {
-        //     accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(k, input);
-        // }
+        int ki = kLow % input.len;
 
         for (int k = kLow; k <= kHigh; k++, ki++) {
             accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(ki, input);
