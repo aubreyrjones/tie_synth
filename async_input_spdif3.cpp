@@ -104,10 +104,11 @@ void AsyncAudioInputSPDIF3::begin()
 #ifdef DEBUG_SPDIF_IN
 	while (!Serial);
 #endif
-	_bufferLPFilter.pCoeffs=new float[5];
+	float *coefs = new float[5];
+	_bufferLPFilter.pCoeffs=coefs;
 	_bufferLPFilter.numStages=1;
 	_bufferLPFilter.pState=new float[2];
-	getCoefficients(_bufferLPFilter.pCoeffs, BiquadType::LOW_PASS, 0., 5., AUDIO_SAMPLE_RATE_EXACT/AUDIO_BLOCK_SAMPLES, 0.5);
+	getCoefficients(coefs, BiquadType::LOW_PASS, 0., 5., AUDIO_SAMPLE_RATE_EXACT/AUDIO_BLOCK_SAMPLES, 0.5);
 	SPDIF_SCR &=(~SPDIF_SCR_RXFIFO_OFF_ON);	//receive fifo is turned on again
 	
 	SPDIF_SRCD = 0;

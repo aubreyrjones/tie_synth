@@ -25,7 +25,8 @@
 #include <Arduino.h>
 #include "effect_reverb.h"
 #include "utility/dspinst.h"
-#include "math_helper.h"
+//#include "math_helper.h"
+#include "arm_math.h"
 
 void 
 AudioEffectReverb::_do_comb_apf(struct comb_apf *apf, int32_t *in_buf, int32_t *out_buf)

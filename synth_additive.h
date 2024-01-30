@@ -78,7 +78,8 @@ protected:
 
 public:
     AudioSynthAdditive(void) : AudioStream(0, NULL), sampler(AUDIO_SAMPLE_RATE_EXACT, signal.data()) {
-        arm_rfft_fast_init_f32(&fftInstance, signal_table_size);
+        //arm_rfft_fast_init_f32(&fftInstance, signal_table_size);
+        arm_rfft_fast_init_256_f32(&fftInstance);
 
         //partialTable[2] = 40;
         partialTable[4] = 40;
