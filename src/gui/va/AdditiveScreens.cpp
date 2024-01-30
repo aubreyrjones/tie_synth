@@ -6,11 +6,11 @@ namespace gui {
 
 static struct AdditiveScreen : public Screen {
 
-    DualWidget<NumericalWidget<float>, NumericalWidget<float>> filterTypeFreq;
+    DualWidget<NumericalWidget<int>, NumericalWidget<float>> filterTypeFreq;
 
     AdditiveScreen() : 
         Screen(),
-        filterTypeFreq(NumericalWidget(audio::as_module.frequency), NumericalWidget(audio::as_module.frequency))
+        filterTypeFreq(NumericalWidget(audio::as_module.debug), NumericalWidget(audio::as_module.frequency))
         
     {
         focusedWidget = &filterTypeFreq;
