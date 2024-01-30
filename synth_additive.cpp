@@ -63,24 +63,21 @@ int shrage(int a, int z, int m) {
     return a * (z % q) - r * (int)(z / q);
 }
 
-void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, unsigned int phase, bool debugFlag) {
+float windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, float phase, bool debugFlag) {
     const int windowSize = 8;
     const int halfWindow = windowSize / 2;
 
     const float sincScale = min(inputSampleRate, outputSampleRate) / inputSampleRate;
     const float sampleRatio = inputSampleRate / outputSampleRate;
 
-    //float phContrib = mod(phase * sampleRatio, input.len);
-
-    const auto phaseInRate = shrage(inputSampleRate, phase, input.len);
-    float phContrib = phaseInRate / outputSampleRate;
-    float lastPhase = phContrib;
+    float lastPhase;
 
     for (int j = 0; j < output.len; j++) {
 
-        float Ji = mod(j * sampleRatio, input.len) + phContrib;
+        float Ji = j * sampleRatio + phase;
+        lastPhase = Ji;
 
-        int kSample = ((int) floorf(Ji - halfWindow)) % input.len;
+        int kSample = floorf(Ji - halfWindow);
 
         float intPart;
         float windowOffset = modff(Ji, &intPart);
@@ -104,17 +101,19 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
         }
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
+
+    return lastPhase;
 }
 
 
-void pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, int phase, bool debugFlag) {
+float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, int phase, bool debugFlag) {
     float shiftedRate = nativeSampleRate * (originalPitch / targetPitch);
-    windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, debugFlag);
+    return windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, debugFlag);
 }
 
-void pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, int phase, bool debugFlag) {
+float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, int phase, bool debugFlag) {
     float originalPitch = nativeSampleRate / loop.len;
-    pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, debugFlag);
+    return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, debugFlag);
 }
 
 
@@ -132,7 +131,7 @@ void AudioSynthAdditive::update() {
     // calculate the waveform for this frame
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
-    resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, sampleIndex, useWindow);
+    phase = resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, phase, useWindow);
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
