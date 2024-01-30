@@ -38,32 +38,25 @@ float sample_loop(int k, buffer wave) {
 
 float sinc(float x) {
     if (abs(x) <= std::numeric_limits<float>::epsilon()) return 1;
-    return sin(x * PI) / (x * PI);
+    return arm_sin_f32(x * PI) / (x * PI);
 }
-
-constexpr std::array blackman_window = {-1.3877787807814457e-17, 0.0664466094067262, 0.3399999999999999, 0.7735533905932737, 0.9999999999999999, 0.7735533905932739, 0.3400000000000001, 0.06644660940672628, -1.3877787807814457e-17};
 
 float window(float m, int M, bool debugFlag) {
     if (m >= 0 && m <= M) {
-        //if (debugFlag) {
-            return 0.42f - (0.5f * cosf((2 * PI * m) / M)) + (0.08f * cosf((4 * PI * m) / M));
-        // }
-        // else {
-        //     float iPart;
-        //     const auto fPart = modf(m, &iPart);
-        //     const float lower = blackman_window[iPart];
-        //     if (iPart >= M) {
-        //         return lower;
-        //     }
-            
-        //     float upper = blackman_window[iPart + 1];
-
-        //     return lower + fPart * (upper - lower);
-        // }
-        //return blackman_window[roundf(m)];
+        return 0.42f - (0.5f * arm_cos_f32((2 * PI * m) / M)) + (0.08f * arm_cos_f32((4 * PI * m) / M));
     }
 
     return 0;
+}
+
+// float mod(int x, int m) {
+//     return x % m;
+// }
+
+float mod(float x, int m) {
+    float intPart;
+    float fracPart = modf(x, &intPart);
+    return ((int) intPart % m) + fracPart;
 }
 
 void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, int phase, bool debugFlag) {
@@ -75,12 +68,22 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
 
     for (int j = 0; j < output.len; j++) {
         float accum = 0;
+
         float J = (j + phase) * sampleRatio;
         int kLow = ceilf(J - halfWindow);
         int kHigh = floorf(J + halfWindow);
+        int ki = kLow;
 
-        for (int k = kLow, ki = 0; k <= kHigh; k++, ki++) {
-            accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(k, input);
+        // float phContrib = (j + phase) * sampleRatio; //mod(phase * sampleRatio, input.len);
+        // float Ji = 0 + phContrib;
+        // int ki = (int) ceilf(Ji - halfWindow);
+
+        // for (int k = kLow, ki = 0; k <= kHigh; k++, ki++) {
+        //     accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(k, input);
+        // }
+
+        for (int k = kLow; k <= kHigh; k++, ki++) {
+            accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(ki, input);
         }
 
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
