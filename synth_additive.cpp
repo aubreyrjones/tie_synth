@@ -69,14 +69,28 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
     for (int j = 0; j < output.len; j++) {
         float accum = 0;
 
-        float J = (j * sampleRatio) + (phase * sampleRatio);
-        int kLow = ceilf(J - halfWindow);
-        int kHigh = floorf(J + halfWindow);
-        int ki = ceilf(J - halfWindow);
+        float J = (j + phase) * sampleRatio;
+        int kLow = floorf(J - halfWindow);
+        int kHigh = ceilf(J + halfWindow);
+        float intPart;
 
-        for (int k = kLow; k <= kHigh; k++, ki++) {
-            accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(ki, input);
+        std::array<float, 9> kMinusJ {};
+        for (int k = kLow, ki = 0, s = -halfWindow; k <= (kLow + windowSize); k++, ki++, s++) {
+            kMinusJ[ki] = s - modf(J, &intPart);
         }
+
+        std::array<float, 9> sincTable {};
+        for (int ki = 0; ki <= windowSize; ki++) {
+            sincTable[ki] = sinc(sincScale * kMinusJ[ki]) * window(kMinusJ[ki] + halfWindow, windowSize, debugFlag);
+        }
+
+        for (int ki = 0, k = kLow; ki <= windowSize; ki++, k++) {
+            accum += sincTable[ki] * samplePolicy(k, input);
+        }
+
+        // for (int k = kLow; k <= kHigh; k++, ki++) {
+        //     accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(ki, input);
+        // }
 
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
@@ -108,7 +122,7 @@ void AudioSynthAdditive::update() {
     // calculate the waveform for this frame
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
-    resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), signal_table_size}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, sampleIndex, useWindow);
+    resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, sampleIndex, useWindow);
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
