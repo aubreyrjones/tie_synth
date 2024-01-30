@@ -22,33 +22,51 @@ float sample_oneshot(int i, buffer wave) {
 
 float sample_loop(int k, buffer wave) {
     if (k < 0) {
-        k = k % wave.len;
-        if (k < 0) k += wave.len;
+        while (k < 0) k += wave.len;
     }
     else if (k >= wave.len) {
-        k = k % wave.len;
+        if (wave.len == 256) {
+            k = k & 0xff;
+        }
+        else {
+            k = k % wave.len;
+        }
     }
 
     return wave.t[k];
 }
 
 float sinc(float x) {
+    if (abs(x) <= std::numeric_limits<float>::epsilon()) return 1;
     return sin(x * PI) / (x * PI);
 }
 
 constexpr std::array blackman_window = {-1.3877787807814457e-17, 0.0664466094067262, 0.3399999999999999, 0.7735533905932737, 0.9999999999999999, 0.7735533905932739, 0.3400000000000001, 0.06644660940672628, -1.3877787807814457e-17};
 
-float window(float m, int M) {
+float window(float m, int M, bool debugFlag) {
     if (m >= 0 && m <= M) {
-        //return 0.42f - (0.5f * cosf((2 * PI * m) / M)) + (0.08f * cosf((4 * PI * m) / M));
-        // could probably interpolate this, but leave it for now.
-        return blackman_window[m];
+        //if (debugFlag) {
+            return 0.42f - (0.5f * cosf((2 * PI * m) / M)) + (0.08f * cosf((4 * PI * m) / M));
+        // }
+        // else {
+        //     float iPart;
+        //     const auto fPart = modf(m, &iPart);
+        //     const float lower = blackman_window[iPart];
+        //     if (iPart >= M) {
+        //         return lower;
+        //     }
+            
+        //     float upper = blackman_window[iPart + 1];
+
+        //     return lower + fPart * (upper - lower);
+        // }
+        //return blackman_window[roundf(m)];
     }
 
     return 0;
 }
 
-void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy) {
+void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, int phase, bool debugFlag) {
     int windowSize = 8;
     int halfWindow = windowSize / 2;
 
@@ -57,12 +75,12 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
 
     for (int j = 0; j < output.len; j++) {
         float accum = 0;
-        float J = j * sampleRatio;
+        float J = (j + phase) * sampleRatio;
         int kLow = ceilf(J - halfWindow);
         int kHigh = floorf(J + halfWindow);
 
-        for (int k = kLow; k <= kHigh; k++) {
-            accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize) * samplePolicy(k, input);
+        for (int k = kLow, ki = 0; k <= kHigh; k++, ki++) {
+            accum += sinc(sincScale * (k - J)) * window(k - J + halfWindow, windowSize, debugFlag) * samplePolicy(k, input);
         }
 
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
@@ -70,14 +88,14 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
 }
 
 
-void pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch) {
+void pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, int phase, bool debugFlag) {
     float shiftedRate = nativeSampleRate * (originalPitch / targetPitch);
-    windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop);
+    windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, debugFlag);
 }
 
-void pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch) {
+void pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, int phase, bool debugFlag) {
     float originalPitch = nativeSampleRate / loop.len;
-    pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch);
+    pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, debugFlag);
 }
 
 
@@ -95,11 +113,12 @@ void AudioSynthAdditive::update() {
     // calculate the waveform for this frame
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
-    resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), signal_table_size}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency);
+    resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), signal_table_size}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, sampleIndex, useWindow);
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
     }
+    sampleIndex += AUDIO_BLOCK_SAMPLES;
 
     // for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
     //     block->data[i] = sampler.sample() * 32000;

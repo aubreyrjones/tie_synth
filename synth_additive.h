@@ -73,11 +73,17 @@ protected:
 
     NCO sampler; // needed to sample the abstract waveform out at a particular frequency
 
+    int sampleIndex = 0;
+    bool useWindow = false;
+
 public:
     AudioSynthAdditive(void) : AudioStream(0, NULL), sampler(AUDIO_SAMPLE_RATE_EXACT, signal.data()) {
         arm_rfft_fast_init_f32(&fftInstance, signal_table_size);
 
-        partialTable[2] = 100;
+        //partialTable[2] = 40;
+        partialTable[4] = 40;
+
+        //partialTable[102] = 40;
         
         // for (int i = 0; i < signal_table_size; i++) {
         //     if (i % 9) signal[i] = 1;
@@ -94,6 +100,8 @@ public:
     std::array<float, signal_table_size>& samples() { return signal; }
 
     void frequency(float freq) { sampler.setFrequency(freq); }
+
+    void window(bool doWindowing) { useWindow = doWindowing; }
 
     virtual void update(void) override;
 };
