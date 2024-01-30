@@ -49,32 +49,41 @@ float window(float m, int M, bool debugFlag) {
     return 0;
 }
 
-// float mod(int x, int m) {
-//     return x % m;
-// }
 
 float mod(float x, int m) {
     float intPart;
-    float fracPart = modf(x, &intPart);
+    float fracPart = modff(x, &intPart);
     return ((int) intPart % m) + fracPart;
 }
 
-void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, int phase, bool debugFlag) {
-    int windowSize = 8;
-    int halfWindow = windowSize / 2;
+int shrage(int a, int z, int m) {
+    int q = (float) m / a;
+    auto r = m % a;
 
-    float sincScale = min(inputSampleRate, outputSampleRate) / inputSampleRate;
-    float sampleRatio = inputSampleRate / outputSampleRate;
+    return a * (z % q) - r * (int)(z / q);
+}
+
+void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, unsigned int phase, bool debugFlag) {
+    const int windowSize = 8;
+    const int halfWindow = windowSize / 2;
+
+    const float sincScale = min(inputSampleRate, outputSampleRate) / inputSampleRate;
+    const float sampleRatio = inputSampleRate / outputSampleRate;
+
+    //float phContrib = mod(phase * sampleRatio, input.len);
+
+    const auto phaseInRate = shrage(inputSampleRate, phase, input.len);
+    float phContrib = phaseInRate / outputSampleRate;
+    float lastPhase = phContrib;
 
     for (int j = 0; j < output.len; j++) {
-        float accum = 0;
 
-        //float J = (j + phase) * sampleRatio;
+        float Ji = mod(j * sampleRatio, input.len) + phContrib;
 
-        float Ji = mod(j * sampleRatio, input.len) + mod(phase * sampleRatio, input.len);
         int kSample = ((int) floorf(Ji - halfWindow)) % input.len;
+
         float intPart;
-        float windowOffset = modf(Ji, &intPart);
+        float windowOffset = modff(Ji, &intPart);
 
         // no J below here.
 
@@ -88,10 +97,11 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
             sincTable[ki] = sinc(sincScale * sCoeff[ki]) * window(sCoeff[ki] + halfWindow, windowSize, debugFlag);
         }
 
+        // final sinc summation
+        float accum = 0;
         for (int ki = 0; ki <= windowSize; ki++, kSample++) {
             accum += sincTable[ki] * samplePolicy(kSample, input);
         }
-
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
 }

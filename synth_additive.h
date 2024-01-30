@@ -73,7 +73,7 @@ protected:
 
     NCO sampler; // needed to sample the abstract waveform out at a particular frequency
 
-    int sampleIndex = 0;
+    unsigned int sampleIndex = 0;
     bool useWindow = false;
 
 public:
