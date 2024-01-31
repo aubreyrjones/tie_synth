@@ -148,6 +148,7 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
 
     for (int j = 0; j < output.len; j++) {
 
+        float J = j * sampleRatio + phase;
         float Ji = mod((j) * sampleRatio, input.len) + phase;
 
         int kSample = ((int) ceilf(Ji - halfWindow)) % input.len;
