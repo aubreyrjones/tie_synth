@@ -122,6 +122,26 @@ static struct PartialEditor : public Screen {
         sully();
     }
 
+    virtual bool hasScope() { return true; }
+
+
+    int offset = 0;
+    int direction = 1;
+    virtual void drawScope() {
+        display::draw_buffer_in_scope(additive1.samples().data() + offset);
+        if (offset > 0 && offset < 128) {
+            offset += direction;
+        }
+        else if (offset <= 0) {
+            direction = 1;
+            offset++;
+        }
+        else if (offset >= 128) {
+            direction = -1;
+            offset--;
+        }
+     }
+
 } partialEditor;
 
 

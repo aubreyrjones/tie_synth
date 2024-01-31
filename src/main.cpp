@@ -101,6 +101,24 @@ bool handle_nav_arrows(int cc, bool push) {
   return true;
 }
 
+void draw_default_scope() {
+  using namespace display;
+  scope_oled.clearBuffer();
+  for (int i = 0; i < 128; i++) {
+    float s = scopeTap.lastFrame[i] / 65536.f;
+    //float s = additive1.samples()[i];
+    u8g2_uint_t height = abs(s) * 64;
+    if (s > 0) {
+      // scope_oled.drawVLine(i, 31, height);
+      scope_oled.drawPixel(i, 31 + height);
+    } else {
+      // scope_oled.drawVLine(i, 31 - height, height);
+      scope_oled.drawPixel(i, 31 - height);
+    }
+  }
+  scope_oled.sendBuffer();
+}
+
 
 Metro blankTimeout(60000); // 1 minute screen sleep timer
 Metro scopeRepaint(40); // 25fps
@@ -152,20 +170,13 @@ void loop() {
 
   if (scopeRepaint.check()) {
     scopeRepaint.reset();
-    scope_oled.clearBuffer();
-    for (int i = 0; i < 128; i++) {
-      float s = scopeTap.lastFrame[i] / 65536.f;
-      //float s = additive1.samples()[i];
-      u8g2_uint_t height = abs(s) * 64;
-      if (s > 0) {
-        // scope_oled.drawVLine(i, 31, height);
-        scope_oled.drawPixel(i, 31 + height);
-      } else {
-        // scope_oled.drawVLine(i, 31 - height, height);
-        scope_oled.drawPixel(i, 31 - height);
-      }
+    
+    if (gui::activeScreen->hasScope()) {
+      gui::activeScreen->drawScope();
     }
-    scope_oled.sendBuffer();
+    else {
+      draw_default_scope();
+    }
   }
 
   gui::activeScreen->draw();

@@ -2,6 +2,21 @@
 
 namespace display {
 
+
+void draw_buffer_in_scope(float *data) {
+    scope_oled.clearBuffer();
+    for (int i = 0; i < 128; i++) {
+        float s = data[i];
+        u8g2_uint_t height = abs(s) * 64;
+        if (s > 0) {
+            scope_oled.drawPixel(i, 31 + height);
+        } else {
+            scope_oled.drawPixel(i, 31 - height);
+        }
+    }
+    scope_oled.sendBuffer();
+}
+
 // main display on SPI1 for menus and navigation.
 Adafruit_SSD1351 main_oled = Adafruit_SSD1351(
     SCREEN_WIDTH, SCREEN_HEIGHT, &SPI1, CS_PIN, DC_PIN, RST_PIN); // for SPI1

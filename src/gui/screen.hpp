@@ -493,6 +493,8 @@ public:
     }
 
     virtual bool showPerf() { return true; }
+    virtual bool hasScope() { return false; }
+    virtual void drawScope() { }
 
     void flowWidgets(em::ivec const& tl, Widget* firstWidget);
     void drawWidgets(Widget* firstWidget);
