@@ -150,29 +150,21 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
 
         float Ji = mod((j) * sampleRatio, input.len) + phase;
 
-        int kSample = ((int) floorf(Ji - halfWindow)) % input.len;
+        int kSample = ((int) ceilf(Ji - halfWindow)) % input.len;
 
         float intPart;
         float windowOffset = modff(Ji, &intPart);
 
         // no J below here.
 
-        std::array<float, 9> sCoeff {};
-        for (int ki = 0, s = -halfWindow; ki <= windowSize; ki++, s++) {
-            sCoeff[ki] = s - windowOffset;
-        }
-
-        std::array<float, 9> sincTable {};
-        for (int ki = 0; ki <= windowSize; ki++) {
-            auto winScale = debugFlag ? fast_window(windowOffset, ki) : window(sCoeff[ki] + halfWindow, windowSize, debugFlag);
-            sincTable[ki] = sinc(sincScale * sCoeff[ki]) * winScale;
-        }
-
-        // final sinc summation
         float accum = 0;
-        for (int ki = 0; ki <= windowSize; ki++, kSample++) {
-            accum += sincTable[ki] * samplePolicy(kSample, input);
+
+        for (int ki = 0, s = -halfWindow; ki <= windowSize; ki++, s++, kSample++) {
+            float sampleOffset = s - windowOffset;
+            auto winScale = debugFlag ? fast_window(windowOffset, ki) : window(sampleOffset + halfWindow, windowSize, debugFlag);
+            accum +=  sinc(sincScale * sampleOffset) * winScale * samplePolicy(kSample, input);
         }
+
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
 
