@@ -44,7 +44,8 @@ float sample_loop(int k, buffer wave) {
 
 float sinc(float x) {
     if (abs(x) <= std::numeric_limits<float>::epsilon()) return 1;
-    return arm_sin_f32(x * PI) / (x * PI);
+    const float nX = x * PI;
+    return arm_sin_f32(nX) / nX;
 }
 
 std::array<float, 288> windowTableData {
@@ -85,10 +86,7 @@ arm_bilinear_interp_instance_f32 windowTableInterpolator { 32, 9, windowTableDat
 
 
 float window(float m, int M, bool debugFlag) {
-    // there's an interpolation-based speedup here, but it's not huge. It needs a 2D table, which winds up being a lot of
-    // divisions to bring everything into scale and then do the interpolations. The fast trig functions here only
-    // eat about 3% of the DSP budget, and I'm not ready to optimize it yet.
-
+    // see fast_window for a faster method. :)
     if (m >= 0 && m <= M) {
         return 0.42f - (0.5f * arm_cos_f32((2 * PI * m) / M)) + (0.08f * arm_cos_f32((4 * PI * m) / M));
     }
@@ -126,14 +124,11 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
         for (int ki = 0; ki <= windowSize; ki++) {
             float sampleOffset = kLow + ki - J;
             float fractionalOffset = fract_part(sampleOffset + halfWindow);
-            auto winScale = debugFlag ? 
-                fast_window(fractionalOffset, ki) :
-                window(sampleOffset + halfWindow, windowSize, debugFlag);
-            //Serial.print(sampleOffset + halfWindow);
-            //Serial.print(", ");
-            accum +=  sinc(sincScale * sampleOffset) * winScale * samplePolicy(kLow + ki, input);
+            auto winScale = fast_window(fractionalOffset, ki);
+
+            float sincVal = debugFlag ? 0 : sinc(sincScale * sampleOffset);
+            accum += sincVal * winScale * samplePolicy(kLow + ki, input);
         }
-        //Serial.println("");
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
 
