@@ -147,11 +147,12 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
     const float sampleRatio = inputSampleRate / outputSampleRate;
 
     for (int j = 0; j < output.len; j++) {
-        float J = j * sampleRatio;
+        float J = j * sampleRatio + phase;
         int kLow = (int) ceilf(J - halfWindow);
 
         float Ji = mod(j * sampleRatio, input.len) + phase;
-        int kSample = ceilf(mod(kLow + phase, input.len));
+        int kSample = ceilf(mod(kLow, input.len));
+        //int kSample = ((int) ceilf(Ji - halfWindow)) % input.len;
 
         float intPart;
         float windowOffset = modff(Ji, &intPart);
@@ -159,8 +160,9 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
         float accum = 0;
 
         for (int ki = 0; ki <= windowSize; ki++, kSample++) {
+            //float sampleOffset = -halfWindow + ki - windowOffset;
             float sampleOffset = kLow + ki - J;
-            auto winScale = debugFlag ? fast_window(windowOffset, ki) : window(sampleOffset + halfWindow, windowSize, debugFlag);
+            auto winScale = window(sampleOffset + halfWindow, windowSize, debugFlag);
             accum +=  sinc(sincScale * sampleOffset) * winScale * samplePolicy(kSample, input);
         }
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
