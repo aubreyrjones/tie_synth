@@ -81,8 +81,8 @@ public:
         //arm_rfft_fast_init_f32(&fftInstance, signal_table_size);
         arm_rfft_fast_init_256_f32(&fftInstance);
 
-        //partialTable[2] = 40;
-        partialTable[4] = 40;
+        partialTable[2] = 40;
+        //partialTable[4] = 40;
 
         //partialTable[102] = 40;
         
