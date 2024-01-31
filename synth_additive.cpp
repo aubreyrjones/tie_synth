@@ -129,7 +129,6 @@ float window(float m, int M, bool debugFlag) {
 }
 
 float fast_window(float windowOffset, int ki) {
-    //Serial.println(windowOffset);
     return arm_bilinear_interp_f32(&windowTableInterpolator, ki, windowOffset * (windowTableInterpolator.numRows - 1));
 }
 
@@ -150,20 +149,11 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
         float J = j * sampleRatio + phase;
         int kLow = (int) ceilf(J - halfWindow);
 
-        float Ji = mod(j * sampleRatio, input.len) + phase;
-        int kSample = ceilf(mod(kLow, input.len));
-        //int kSample = ((int) ceilf(Ji - halfWindow)) % input.len;
-
-        float intPart;
-        float windowOffset = modff(Ji, &intPart);
-
         float accum = 0;
-
-        for (int ki = 0; ki <= windowSize; ki++, kSample++) {
-            //float sampleOffset = -halfWindow + ki - windowOffset;
+        for (int ki = 0; ki <= windowSize; ki++) {
             float sampleOffset = kLow + ki - J;
             auto winScale = window(sampleOffset + halfWindow, windowSize, debugFlag);
-            accum +=  sinc(sincScale * sampleOffset) * winScale * samplePolicy(kSample, input);
+            accum +=  sinc(sincScale * sampleOffset) * winScale * samplePolicy(kLow + ki, input);
         }
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
