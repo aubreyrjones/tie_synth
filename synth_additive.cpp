@@ -136,8 +136,6 @@ void AudioSynthAdditive::update() {
     playbackPhase = 
         resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, playbackPhase, useWindow);
 
-    Serial.println(playbackPhase);
-
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
     }
