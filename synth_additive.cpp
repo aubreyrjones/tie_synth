@@ -22,7 +22,13 @@ float sample_oneshot(int i, buffer wave) {
 
 float sample_loop(int k, buffer wave) {
     if (k < 0) {
-        while (k < 0) k += wave.len;
+        int i = 5;
+        while (k < 0) {
+            k += wave.len;
+            if (i-- < 0) {
+                Serial.print("whuuhh?");
+            }
+        }
     }
     else if (k >= wave.len) {
         if (wave.len == 256) {
@@ -49,12 +55,12 @@ float window(float m, int M, bool debugFlag) {
     return 0;
 }
 
-double mod(double x, int m) {
-    double intPart;
-    double fracPart = modf(x, &intPart);
-    double v = ((int) intPart % m) + fracPart;
-    return v;
-}
+// double mod(double x, int m) {
+//     double intPart;
+//     double fracPart = modf(x, &intPart);
+//     double v = ((int) intPart % m) + fracPart;
+//     return v;
+// }
 
 float mod(float x, int m) {
     float intPart;
@@ -62,50 +68,16 @@ float mod(float x, int m) {
     return ((int) intPart % m) + fracPart;
 }
 
-int shrage(int a, int z, int m) {
-    int q = (float) m / a;
-    auto r = m % a;
-
-    Serial.print("a:");
-    Serial.print(a);
-    Serial.print(" z:");
-    Serial.print(z);
-    Serial.print(" m:");
-    Serial.print(m);
-    Serial.print(" q:");
-    Serial.print(q);
-    Serial.print(" r:");
-    Serial.print(r);
-    
-
-    auto zmodq = z % q;
-    auto zoverq = z / q;
-
-    Serial.print(" zq:");
-    Serial.print(zmodq);
-    Serial.print(" z/q:");
-    Serial.println(zoverq);
-
-    auto v = a * zmodq - r * (int)(zoverq);
-
-    if (v < 0) return v + m;
-    return v;
-}
-
-void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, unsigned int phase, bool debugFlag) {
+float windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, float phase, bool debugFlag) {
     const int windowSize = 8;
     const int halfWindow = windowSize / 2;
 
     const float sincScale = min(inputSampleRate, outputSampleRate) / inputSampleRate;
     const float sampleRatio = inputSampleRate / outputSampleRate;
 
-    float phContrib = 0;
-
-    //phContrib = mod(phase * (double) sampleRatio, input.len); // do this as a double to capture big phase.
-    
     for (int j = 0; j < output.len; j++) {
 
-        float Ji = mod(j * sampleRatio, input.len) + phContrib;
+        float Ji = mod((j) * sampleRatio, input.len) + phase;
 
         int kSample = ((int) floorf(Ji - halfWindow)) % input.len;
 
@@ -131,17 +103,19 @@ void windowed_sinc_interpolation(buffer input, buffer output, float inputSampleR
         }
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
+
+    return mod(mod((output.len) * sampleRatio, input.len) + phase, input.len);
 }
 
 
-void pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, int phase, bool debugFlag) {
+float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, float phase, bool debugFlag) {
     float shiftedRate = nativeSampleRate * (originalPitch / targetPitch);
-    windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, debugFlag);
+    return windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, debugFlag);
 }
 
-void pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, int phase, bool debugFlag) {
+float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, float phase, float debugFlag) {
     float originalPitch = nativeSampleRate / loop.len;
-    pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, debugFlag);
+    return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, debugFlag);
 }
 
 
@@ -159,12 +133,14 @@ void AudioSynthAdditive::update() {
     // calculate the waveform for this frame
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
-    resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, sampleIndex, useWindow);
+    playbackPhase = 
+        resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, playbackPhase, useWindow);
+
+    Serial.println(playbackPhase);
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
     }
-    sampleIndex += AUDIO_BLOCK_SAMPLES;
 
     // for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
     //     block->data[i] = sampler.sample() * 32000;
