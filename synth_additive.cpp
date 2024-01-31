@@ -48,19 +48,16 @@ float sinc(float x) {
 }
 
 float window(float m, int M, bool debugFlag) {
+    // there's an interpolation-based speedup here, but it's not huge. It needs a 2D table, which winds up being a lot of
+    // divisions to bring everything into scale and then do the interpolations. The fast trig functions here only
+    // eat about 3% of the DSP budget, and I'm not ready to optimize it yet.
+
     if (m >= 0 && m <= M) {
         return 0.42f - (0.5f * arm_cos_f32((2 * PI * m) / M)) + (0.08f * arm_cos_f32((4 * PI * m) / M));
     }
 
     return 0;
 }
-
-// double mod(double x, int m) {
-//     double intPart;
-//     double fracPart = modf(x, &intPart);
-//     double v = ((int) intPart % m) + fracPart;
-//     return v;
-// }
 
 float mod(float x, int m) {
     float intPart;
@@ -92,9 +89,22 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
         }
 
         std::array<float, 9> sincTable {};
-        for (int ki = 0; ki <= windowSize; ki++) {
-            sincTable[ki] = sinc(sincScale * sCoeff[ki]) * window(sCoeff[ki] + halfWindow, windowSize, debugFlag);
+        if (debugFlag) {
+        Serial.print("{");
+        Serial.print(windowOffset, 10);
+        Serial.print(", { ");
         }
+        for (int ki = 0; ki <= windowSize; ki++) {
+            auto winScale = window(sCoeff[ki] + halfWindow, windowSize, debugFlag);
+            if (debugFlag) {
+            Serial.print(winScale, 10);
+            Serial.print(", ");
+            }
+
+            sincTable[ki] = sinc(sincScale * sCoeff[ki]) * winScale;
+        }
+        if (debugFlag)
+            Serial.println("};");
 
         // final sinc summation
         float accum = 0;
