@@ -7,61 +7,6 @@
 #include <arm_math.h>    // github.com/PaulStoffregen/cores/blob/master/teensy4/arm_math.h
 #include <array>
 
-
-struct NCO {
-    uint32_t phase_accumulator = 0;
-	uint32_t phase_increment = 0;
-	uint32_t phase_offset = 0;
-    float frequency = 440;
-    float outputSampleRate;
-    float halfRate, sampleRatePhaseIncrementConstant;
-    
-    float* table;
-
-    inline NCO(float outputRate, float* table) : table(table) {
-        setOutputRate(outputRate);
-    }
-
-    inline void setOutputRate(float rate) {
-        outputSampleRate = rate;
-        halfRate = rate / 2.f;
-        sampleRatePhaseIncrementConstant = 4294967296.0f / rate;
-        
-        setFrequency(frequency); // reset our frequency control words
-    }
-
-    inline void setFrequency(float freq) {
-        frequency = freq;
-        if (freq < 0.0f) {
-			freq = 0.0;
-		} else if (freq > halfRate) { // no frequency above nyquist
-			freq = halfRate;
-		}
-		phase_increment = freq * (4294967296.0f / outputSampleRate);
-		if (phase_increment > 0x7FFE0000u) phase_increment = 0x7FFE0000;
-    }
-
-    inline void step() {
-        phase_accumulator += phase_increment;
-    }
-
-    inline float sample() {
-        auto index = phase_accumulator >> 24; // index into 256-entry table.
-        auto residue = (phase_accumulator & 0x0fff) / (float) 0x0fff; // interpolation factor
-        
-        auto nextIndex = index + 1;
-        if (nextIndex > 255) {
-            nextIndex = 0;
-        }
-
-        auto s = table[index];
-        auto s1 = table[nextIndex];
-
-        return s + residue * (s1 - s);
-    }
-};
-
-
 class AudioSynthAdditive : public AudioStream {
 protected:
     static constexpr auto partial_table_size = 256;
@@ -74,7 +19,7 @@ protected:
     float _frequency = 440;
 
     float playbackPhase = 0;
-    bool useWindow = false;
+    bool doDebug = false;
 
 public:
     AudioSynthAdditive(void) : AudioStream(0, NULL) {
@@ -87,11 +32,15 @@ public:
     /// @return A mutable reference to the partial array.
     std::array<float, partial_table_size>& partials() { return partialTable; }
 
+    /// @brief Get a reference to the signal array.
+    /// @return A mutable reference to the signal array.
     std::array<float, signal_table_size>& samples() { return signal; }
 
+    /// @brief Set the fundamental pitch for fundamental mode.
+    /// @param freq 
     void frequency(float freq) { _frequency = freq; }
 
-    void window(bool doWindowing) { useWindow = doWindowing; }
+    void debug(bool debug) { doDebug = debug; }
 
     virtual void update(void) override;
 };

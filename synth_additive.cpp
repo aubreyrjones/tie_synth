@@ -208,11 +208,6 @@ void AudioSynthAdditive::update() {
         block->data[i] = workingArray.data()[i] * 32000;
     }
 
-    // for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-    //     block->data[i] = sampler.sample() * 32000;
-    //     sampler.step();
-    // }
-
     transmit(block);
     release(block);
 }
