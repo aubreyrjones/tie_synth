@@ -1,4 +1,5 @@
 #include "synth_additive.h"
+#include <algorithm>
 
 namespace resample {
 
@@ -186,8 +187,14 @@ inline float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSa
     return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase);
 }
 
-
 } //namespace resample
+
+
+
+void AudioSynthAdditive::clearPartials() {
+    std::fill(partialTable.begin(), partialTable.end(), 0.f);
+}
+
 
 void AudioSynthAdditive::update() {
     auto block = allocate();
@@ -201,11 +208,19 @@ void AudioSynthAdditive::update() {
     // calculate the waveform for this frame
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
-    playbackPhase = 
-        resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, _frequency, playbackPhase);
+    if (mode == Mode::Fundamental) {
+        playbackPhase = 
+            resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, _frequency, playbackPhase);
 
-    for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-        block->data[i] = workingArray.data()[i] * 32000;
+        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+            block->data[i] = workingArray.data()[i] * 32000;
+        }
+    }
+    else if (mode == Mode::Spectral) {
+        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+            block->data[i] = signal.data()[i + rawPlaybackPhase] * 32000;
+        }
+        rawPlaybackPhase = (rawPlaybackPhase + AUDIO_BLOCK_SAMPLES) % signal_table_size;
     }
 
     transmit(block);

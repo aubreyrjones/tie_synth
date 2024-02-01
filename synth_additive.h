@@ -8,6 +8,12 @@
 #include <array>
 
 class AudioSynthAdditive : public AudioStream {
+public:
+    enum class Mode {
+        Fundamental,
+        Spectral
+    };
+
 protected:
     static constexpr auto partial_table_size = 256;
     static constexpr auto signal_table_size = partial_table_size;
@@ -16,9 +22,17 @@ protected:
 
     arm_rfft_fast_instance_f32 fftInstance;
 
+    /// @brief The fundamental frequency when run in fundamental mode.
     float _frequency = 440;
-
+    /// @brief Phase tracker for fundamental mode.
     float playbackPhase = 0;
+
+    /// @brief Phase tracker for spectral mode.
+    int rawPlaybackPhase = 0;
+
+    /// @brief Which synthesizer mode are we in?
+    Mode mode = Mode::Spectral; //Mode::Fundamental;
+
     bool doDebug = false;
 
 public:
@@ -41,6 +55,9 @@ public:
     void frequency(float freq) { _frequency = freq; }
 
     void debug(bool debug) { doDebug = debug; }
+
+    /// @brief Clear the whole partial table back to 0.
+    void clearPartials();
 
     virtual void update(void) override;
 };
