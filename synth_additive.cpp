@@ -202,7 +202,7 @@ void AudioSynthAdditive::update() {
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
     playbackPhase = 
-        resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, playbackPhase);
+        resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, _frequency, playbackPhase);
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
