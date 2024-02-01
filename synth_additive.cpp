@@ -2,16 +2,22 @@
 
 namespace resample {
 
+/// @brief Fastest available sinf() function.
+constexpr auto fast_sin = arm_sin_f32;
+
+/// @brief Fastest available cosf() function.
+constexpr auto fast_cos = arm_cos_f32;
+
 /// @brief A pointer to a signal buffer and its length.
 struct buffer {
     float *t;
     int len;
 };
 
-/// @brief Sample function definition.
+/// @brief Sample function definition. Takes an integer offset between -int_max and int_max.
 using sample_func = float (*)(int, buffer);
 
-
+/// @brief Sample from a buffer which is defined as zero everywhere except i = [0, wave.len - 1].
 float sample_oneshot(int i, buffer wave) {
     if (i < 0 || i >= wave.len) {
         return 0;
@@ -20,6 +26,7 @@ float sample_oneshot(int i, buffer wave) {
     return wave.t[i];
 }
 
+/// @brief Sample from a buffer which is treated as an infinite loop.
 float sample_loop(int k, buffer wave) {
     if (k < 0) {
         int i = 5;
@@ -42,13 +49,18 @@ float sample_loop(int k, buffer wave) {
     return wave.t[k];
 }
 
-float sinc(float x) {
-    if (abs(x) <= std::numeric_limits<float>::epsilon()) return 1;
-    const float nX = x * PI;
-    return arm_sin_f32(nX) / nX;
+/// @brief Calculate the window (slowly) using fast_cos(). 
+constexpr float window(float m, int M) {
+    // see fast_window for a faster method. :)
+    if (m >= 0 && m <= M) {
+        return 0.42f - (0.5f * fast_cos((2 * PI * m) / M)) + (0.08f * fast_cos((4 * PI * m) / M));
+    }
+
+    return 0;
 }
 
-std::array<float, 288> windowTableData {
+/// @brief 2D interpolation table for the window function.
+constexpr std::array<float, 288> windowTableData {
 	-1.3877787807814457e-17, 0.0664466094067262, 0.3399999999999999, 0.7735533905932737, 0.9999999999999999, 0.7735533905932739, 0.3400000000000001, 0.06644660940672628, -1.3877787807814457e-17,
 	5.4227148311658535e-05, 0.07130431368527307, 0.3523669777650423, 0.7860489554219268, 0.9997530458445159, 0.7608448584223401, 0.32782574924213015, 0.06180187247046004, 0,
 	0.00021705003118953348, 0.07637915135012596, 0.3649190590299332, 0.7983169339038443, 0.999012506236362, 0.7479381061971446, 0.3158513847025154, 0.05736580854888533, 0,
@@ -82,34 +94,44 @@ std::array<float, 288> windowTableData {
 	0.057365808548885296, 0.31585138470251517, 0.7479381061971443, 0.999012506236362, 0.7983169339038444, 0.3649190590299332, 0.07637915135012596, 0.00021705003118953348, 0,
 	0.061801872470459936, 0.32782574924213004, 0.7608448584223401, 0.9997530458445159, 0.786048955421927, 0.3523669777650424, 0.07130431368527311, 5.4227148311658535e-05, 0,
 };
-arm_bilinear_interp_instance_f32 windowTableInterpolator { 32, 9, windowTableData.data() };
 
+/// @brief Approximate the window value using a lookup table. 
+inline float fast_window(float windowOffset, int ki) {
+    arm_bilinear_interp_instance_f32 windowTableInterpolator { 32, 9, windowTableData.data() };
 
-float window(float m, int M, bool debugFlag) {
-    // see fast_window for a faster method. :)
-    if (m >= 0 && m <= M) {
-        return 0.42f - (0.5f * arm_cos_f32((2 * PI * m) / M)) + (0.08f * arm_cos_f32((4 * PI * m) / M));
-    }
-
-    return 0;
-}
-
-float fast_window(float windowOffset, int ki) {
     return arm_bilinear_interp_f32(&windowTableInterpolator, ki, windowOffset * (windowTableInterpolator.numRows - 1));
 }
 
-float mod(float x, int m) {
+/// @brief The normalized sinc function. 
+constexpr float sinc(float x) {
+    if (abs(x) <= std::numeric_limits<float>::epsilon()) return 1;
+    const float nX = x * PI;
+    return fast_sin(nX) / nX;
+}
+
+/// @brief Definition of modulo for positive floating point numbers.
+/// @return (x % m) + fractional_part(x)
+inline float mod(float x, int m) {
     float intPart;
     float fracPart = modff(x, &intPart);
     return ((int) intPart % m) + fracPart;
 }
 
+/// @brief Get just the fractional part of a floating point number.
 inline float fract_part(float x) {
     float intPart;
     return modff(x, &intPart);
 }
 
-float windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, float phase, bool debugFlag) {
+/// @brief Resample `input` into `output` with the given sample rates.
+/// @param input the signal to be resampled
+/// @param output the buffer to place the resampled signal
+/// @param inputSampleRate the original sample rate of the input buffer
+/// @param outputSampleRate the desired sample rate in the output buffer
+/// @param samplePolicy one of the sample_func above, or something similar.
+/// @param phase phase offset (in the input signal) to start playing.
+/// @return the ending phase within the input buffer, pass back to this function to continue seamless playback within `input` on subsequent calls.
+inline float windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, float phase) {
     const int windowSize = 8;
     const int halfWindow = windowSize / 2;
 
@@ -126,7 +148,11 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
             float fractionalOffset = fract_part(sampleOffset + halfWindow);
             auto winScale = fast_window(fractionalOffset, ki);
 
-            float sincVal = debugFlag ? 0 : sinc(sincScale * sampleOffset);
+            // After profiling, this sinc() call is the most costly part of this whole thing.
+            // Because the sinc values vary with the sample rate ratio (unlike the window scaling above)
+            // and because sinc is infinite but not repeating, 
+            // I don't know of a trivial way to tabulate the solution.
+            float sincVal = sinc(sincScale * sampleOffset); 
             accum += sincVal * winScale * samplePolicy(kLow + ki, input);
         }
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
@@ -135,15 +161,29 @@ float windowed_sinc_interpolation(buffer input, buffer output, float inputSample
     return mod(mod((output.len) * sampleRatio, input.len) + phase, input.len);
 }
 
-
-float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, float phase, bool debugFlag) {
+/// @brief Play a pitch-shifted loop of the given buffer.
+/// @param loop the buffer to loop
+/// @param stream the output buffer
+/// @param nativeSampleRate the sample rate of the input and output buffers
+/// @param originalPitch the original perceived pitch of the loop, in Hz
+/// @param targetPitch the desired pitch of the loop, in Hz
+/// @param phase playback phase (see windowed_sinc_interpolation)
+/// @return playback phase
+inline float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, float phase) {
     float shiftedRate = nativeSampleRate * (originalPitch / targetPitch);
-    return windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, debugFlag);
+    return windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase);
 }
 
-float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, float phase, float debugFlag) {
+/// @brief Play a single-cycle waveform looped at the given target pitch.
+/// @param loop the single-cycle waveform to play
+/// @param stream the output buffer
+/// @param nativeSampleRate the sample rate of the output buffer
+/// @param targetPitch the desired pitch of the loop in Hz
+/// @param phase playback phase (see windowed_sinc_interpolation)
+/// @return playback phase
+inline float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, float phase) {
     float originalPitch = nativeSampleRate / loop.len;
-    return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, debugFlag);
+    return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase);
 }
 
 
@@ -162,7 +202,7 @@ void AudioSynthAdditive::update() {
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
     playbackPhase = 
-        resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, playbackPhase, useWindow);
+        resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, sampler.frequency, playbackPhase);
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
         block->data[i] = workingArray.data()[i] * 32000;
