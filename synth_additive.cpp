@@ -103,19 +103,21 @@ inline float fast_window(float windowOffset, int ki) {
     return arm_bilinear_interp_f32(&windowTableInterpolator, ki, windowOffset * (windowTableInterpolator.numRows - 1));
 }
 
-/// @brief The normalized sinc function. 
-constexpr float sinc(float x) {
+/// @brief The normalized sinc function. Runtime function with fast_sin.
+float sinc(float x) {
     if (abs(x) <= std::numeric_limits<float>::epsilon()) return 1;
     const float nX = x * PI;
     return fast_sin(nX) / nX;
 }
 
+
 /// @brief Definition of modulo for positive floating point numbers.
 /// @return (x % m) + fractional_part(x)
 inline float mod(float x, int m) {
-    float intPart;
-    float fracPart = modff(x, &intPart);
-    return ((int) intPart % m) + fracPart;
+    while (x > m) {
+        x -= m;
+    }
+    return x;
 }
 
 /// @brief Get just the fractional part of a floating point number.
@@ -123,6 +125,7 @@ inline float fract_part(float x) {
     float intPart;
     return modff(x, &intPart);
 }
+
 
 /// @brief Resample `input` into `output` with the given sample rates.
 /// @param input the signal to be resampled
@@ -132,7 +135,7 @@ inline float fract_part(float x) {
 /// @param samplePolicy one of the sample_func above, or something similar.
 /// @param phase phase offset (in the input signal) to start playing.
 /// @return the ending phase within the input buffer, pass back to this function to continue seamless playback within `input` on subsequent calls.
-inline float windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, float phase) {
+inline float windowed_sinc_interpolation(buffer input, buffer output, float inputSampleRate, float outputSampleRate, sample_func samplePolicy, float phase, bool profile) {
     const int windowSize = 8;
     const int halfWindow = windowSize / 2;
 
@@ -150,16 +153,15 @@ inline float windowed_sinc_interpolation(buffer input, buffer output, float inpu
             auto winScale = fast_window(fractionalOffset, ki);
 
             // After profiling, this sinc() call is the most costly part of this whole thing.
-            // Because the sinc values vary with the sample rate ratio (unlike the window scaling above)
-            // and because sinc is infinite but not repeating, 
-            // I don't know of a trivial way to tabulate the solution.
-            float sincVal = sinc(sincScale * sampleOffset); 
+            // but it doesn't matter if I put it in a table, because profiling shows the new table isn't any faster
+            // than the fast_sin() table already.
+            float sincVal = sinc(sincScale * sampleOffset);
             accum += sincVal * winScale * samplePolicy(kLow + ki, input);
         }
         output.t[j] = min(1.f, outputSampleRate / inputSampleRate) * accum;
     }
 
-    return mod(mod((output.len) * sampleRatio, input.len) + phase, input.len);
+    return mod(mod(output.len * sampleRatio, input.len) + phase, input.len);
 }
 
 /// @brief Play a pitch-shifted loop of the given buffer.
@@ -170,9 +172,9 @@ inline float windowed_sinc_interpolation(buffer input, buffer output, float inpu
 /// @param targetPitch the desired pitch of the loop, in Hz
 /// @param phase playback phase (see windowed_sinc_interpolation)
 /// @return playback phase
-inline float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, float phase) {
+inline float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRate, float originalPitch, float targetPitch, float phase, bool profile) {
     float shiftedRate = nativeSampleRate * (originalPitch / targetPitch);
-    return windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase);
+    return windowed_sinc_interpolation(loop, stream, nativeSampleRate, shiftedRate, sample_loop, phase, profile);
 }
 
 /// @brief Play a single-cycle waveform looped at the given target pitch.
@@ -182,13 +184,12 @@ inline float pitch_shift_looped(buffer loop, buffer stream, float nativeSampleRa
 /// @param targetPitch the desired pitch of the loop in Hz
 /// @param phase playback phase (see windowed_sinc_interpolation)
 /// @return playback phase
-inline float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, float phase) {
+inline float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSampleRate, float targetPitch, float phase, bool profile) {
     float originalPitch = nativeSampleRate / loop.len;
-    return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase);
+    return pitch_shift_looped(loop, stream, nativeSampleRate, originalPitch, targetPitch, phase, profile);
 }
 
 } //namespace resample
-
 
 
 void AudioSynthAdditive::clearPartials() {
@@ -197,6 +198,7 @@ void AudioSynthAdditive::clearPartials() {
 
 
 void AudioSynthAdditive::update() {
+
     auto block = allocate();
     if (!block) return;
 
@@ -210,17 +212,22 @@ void AudioSynthAdditive::update() {
 
     if (mode == Mode::Fundamental) {
         playbackPhase = 
-            resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, _frequency, playbackPhase);
+            resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, _frequency, playbackPhase, doDebug);
 
         for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
             block->data[i] = workingArray.data()[i] * 32000;
         }
     }
     else if (mode == Mode::Spectral) {
-        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-            block->data[i] = signal.data()[i + rawPlaybackPhase] * 32000;
+        int si = rawPlaybackPhase;
+        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i += spectralDownsampling) {
+            int s =  32000 * signal.data()[si];
+            for (int j = 0; j < spectralDownsampling; j++) {
+                block->data[i + j] = s;
+            }
+            si = (si + 1) % signal_table_size;
         }
-        rawPlaybackPhase = (rawPlaybackPhase + AUDIO_BLOCK_SAMPLES) % signal_table_size;
+        rawPlaybackPhase = si;
     }
 
     transmit(block);
