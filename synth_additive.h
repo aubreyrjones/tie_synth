@@ -9,11 +9,6 @@
 
 class AudioSynthAdditive : public AudioStream {
 public:
-    enum class Mode {
-        Fundamental = 0,
-        Spectral = 1
-    };
-
 private:
     /// @brief If this is throwing up problems, you've set the `partial_table_size` to an unsupported value.
     template<bool flag = false> void static_no_match() { static_assert(flag, "FFT size not supported."); }
@@ -26,20 +21,9 @@ public:
 
     arm_rfft_fast_instance_f32 fftInstance;
 
-    /// @brief The fundamental frequency when run in fundamental mode.
-    float _frequency = 440;
-    /// @brief Phase tracker for fundamental mode.
-    float playbackPhase = 0;
-
     /// @brief Phase tracker for spectral mode.
     int rawPlaybackPhase = 0;
     
-    /// @brief When running in spectral mode, at what ratio should we downsample for playback?
-    int spectralDownsampling = 1;
-
-    /// @brief Which synthesizer mode are we in?
-    Mode mode = Mode::Fundamental;
-
     bool doDebug = false;
 
 public:
@@ -75,15 +59,6 @@ public:
     /// @return A mutable reference to the signal array.
     std::array<float, signal_table_size>& samples() { return signal; }
 
-    /// @brief Set the fundamental pitch for fundamental mode.
-    void frequency(float freq) { _frequency = freq; }
-
-    /// @brief Set the base iFFT algorithm to either "fundamental" or "spectral" mode.
-    void setMode(Mode m) { mode = m; }
-
-    /// @brief Set the 2-powered integer downsampling ratio (1, 2, 4, 8, etc) for playback.
-    void setDownsample(int ratio) { spectralDownsampling = ratio; };
-
     void debug(bool debug) { doDebug = debug; }
 
     /// @brief Clear the whole partial table back to 0.
@@ -92,6 +67,13 @@ public:
     virtual void update(void) override;
 };
 
+
+class AudioSynthOscBank : public AudioStream {
+public:
+    AudioSynthOscBank(void) : AudioStream(0, NULL) { }
+
+    virtual void update(void) override;
+};
 
 #endif
 

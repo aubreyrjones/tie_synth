@@ -210,26 +210,18 @@ void AudioSynthAdditive::update() {
     // calculate the waveform for this frame
     arm_rfft_fast_f32(&fftInstance, workingArray.data(), signal.data(), 1);
 
-    if (mode == Mode::Fundamental) {
-        playbackPhase = 
-            resample::pitch_shift_single_cycle({signal.data(), signal_table_size}, {workingArray.data(), AUDIO_BLOCK_SAMPLES}, AUDIO_SAMPLE_RATE_EXACT, _frequency, playbackPhase, doDebug);
-
-        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-            block->data[i] = workingArray.data()[i] * 32000;
-        }
+    int si = rawPlaybackPhase;
+    for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+        int s =  32000 * signal.data()[si];
+        block->data[i] = s;
+        si = (si + 1) % signal_table_size;
     }
-    else if (mode == Mode::Spectral) {
-        int si = rawPlaybackPhase;
-        for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i += spectralDownsampling) {
-            int s =  32000 * signal.data()[si];
-            for (int j = 0; j < spectralDownsampling; j++) {
-                block->data[i + j] = s;
-            }
-            si = (si + 1) % signal_table_size;
-        }
-        rawPlaybackPhase = si;
-    }
+    rawPlaybackPhase = si;
 
     transmit(block);
     release(block);
+}
+
+void AudioSynthOscBank::update() {
+
 }
