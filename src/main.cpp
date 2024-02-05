@@ -10,6 +10,7 @@ AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 #include "gui/screen.hpp"
 #include "audio/Control.hpp"
 #include "audio/va/VASynth.hpp"
+#include "audio/additive/AddSynth.hpp"
 
 constexpr float hw_output_volume = 0.5f;
 constexpr size_t n_audio_blocks_allocated = 64;
@@ -22,12 +23,17 @@ MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud> _midi_transport(Serial7
 MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, FastMIDIBaud>> serial_midi(_midi_transport);
 
 void setup() {
+  // adjust the clock speed for the PSRAM mapped to EXTMEM
+  CCM_CBCMR &= ~(CCM_CBCMR_FLEXSPI2_PODF_MASK | CCM_CBCMR_FLEXSPI2_CLK_SEL_MASK); // clear settings
+  CCM_CBCMR |= (CCM_CBCMR_FLEXSPI2_PODF(3) | CCM_CBCMR_FLEXSPI2_CLK_SEL(3)); // 132 MHz
+
   AudioMemory(n_audio_blocks_allocated);
   randomSeed(analogRead(0));
 
+  Serial.begin(38400);                  // terminal with computer
+
   Serial.print("Startup.");
 
-  Serial.begin(38400);                  // terminal with computer
   serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it out ourselves.
 
   // Set up sound chips.
@@ -36,10 +42,19 @@ void setup() {
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
   sgtl5000_1.volume(hw_output_volume);
 
+  display::initialize_oleds();
+
+  // initialize the modules
   audio::va_module.doSetup();
+  audio::as_module.doSetup();
+
+  Serial.println("Finished synth setup.");
+
+  Serial.println(audio::as_module.analyzer.getReader()->length());
+
+  // run all controls to initialize them.
   audio::run_all_control_updates();
 
-  display::initialize_oleds();
 }
 
 gui::WidgetInput cc_to_input_event(midi::DataByte const& cc, midi::DataByte const& val) {

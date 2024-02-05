@@ -3,6 +3,7 @@
 #include "../Control.hpp"
 #include "Arduino.h"
 #include "../audio_externs.h"
+#include "Analyzer.hpp"
 
 
 namespace audio {
@@ -18,7 +19,11 @@ struct AdditiveSynth {
 
     Control<int> debug {"Debug", 0, {0, 1}, [](int b) { oscbank1.debug(b); }};
 
+    AudioAnalyzer analyzer;
+
     decltype(additive1.partials()) partials() { return additive1.partials(); }
+
+    void doSetup();
 };
 
 extern AdditiveSynth as_module;
