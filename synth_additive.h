@@ -16,6 +16,8 @@ private:
 public:
     static constexpr auto partial_table_size = 4096;
     static constexpr auto signal_table_size = partial_table_size;
+    static constexpr float fundamental_frequency = AUDIO_SAMPLE_RATE_EXACT / signal_table_size;
+
     std::array<float, partial_table_size> partialTable; // frequency domain, packed amplitude and phase
     std::array<float, signal_table_size> signal; // time domain, amplitude
 
@@ -47,8 +49,6 @@ public:
         else {
             static_no_match();
         }
-
-        partialTable[2] = 40; // add something to the fundamental
     }
 
     /// @brief Get a reference to the partial array.
@@ -70,7 +70,50 @@ public:
 
 class AudioSynthOscBank : public AudioStream {
 public:
-    AudioSynthOscBank(void) : AudioStream(0, NULL) { }
+    static constexpr auto nBanks = 16;
+
+protected:
+    struct complex {
+        float re = 1, im = 0;
+    };
+
+    struct Bank {
+        static constexpr auto bankSize = 1;
+        float fundamental;
+        std::array<complex, bankSize> values;
+        std::array<complex, bankSize> multipliers;
+        std::array<float, bankSize> amplitudes;
+        int cutoff = 0;
+
+        bool active = false;
+
+        void update();
+
+        float sample();
+
+        Bank() {
+            std::fill(values.begin(), values.end(), complex {1, 0});
+            std::fill(multipliers.begin(), multipliers.end(), complex {1, 0});
+            std::fill(amplitudes.begin(), amplitudes.end(), 1);
+        }
+    };
+
+    std::array<Bank, nBanks> banks {};
+
+    bool _debug = false;
+
+public:
+    AudioSynthOscBank(void) : AudioStream(0, NULL) { 
+        for (int i = 0; i < nBanks; i++) {
+            frequency(i, 440);
+        }
+    }
+
+    void frequency(int bank, float f);
+
+    void setActive(int bank, bool active) { banks[bank].active = active; }
+
+    void debug(bool d) { _debug = d; }
 
     virtual void update(void) override;
 };

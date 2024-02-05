@@ -1,13 +1,13 @@
 #include "synth_additive.h"
 #include <algorithm>
 
-namespace resample {
-
 /// @brief Fastest available sinf() function.
 constexpr auto fast_sin = arm_sin_f32;
 
 /// @brief Fastest available cosf() function.
 constexpr auto fast_cos = arm_cos_f32;
+
+namespace resample {
 
 /// @brief A pointer to a signal buffer and its length.
 struct buffer {
@@ -222,6 +222,61 @@ void AudioSynthAdditive::update() {
     release(block);
 }
 
-void AudioSynthOscBank::update() {
+void AudioSynthOscBank::frequency(int bank, float f) {
+    banks[bank].cutoff = -1;
+    banks[bank].fundamental = f;
+    for (int i = 0; i < Bank::bankSize; i++) {
+        auto harmonicFreq = f * (i + 1);
+        auto phaseIncrement = harmonicFreq *  (2 * PI / AUDIO_SAMPLE_RATE_EXACT);
+        banks[bank].multipliers[i].re = fast_cos(phaseIncrement);
+        banks[bank].multipliers[i].im = fast_sin(phaseIncrement);
+        if (banks[bank].cutoff < 0 && harmonicFreq > AUDIO_SAMPLE_RATE_EXACT / 2) {
+            banks[bank].cutoff = i;
+        }
+    }
 
+    // normalize the multipliers
+    float temp[Bank::bankSize];
+    arm_cmplx_mag_f32((float*) banks[bank].multipliers.data(), temp, Bank::bankSize);
+    for (int i = 0; i < Bank::bankSize; i++) {
+        if (temp[i] > 0) {
+            temp[i] = 1.f / temp[i];
+        }
+    }
+    arm_cmplx_mult_real_f32((float*) banks[bank].multipliers.data(), temp, (float*) banks[bank].multipliers.data(), Bank::bankSize);
+
+    if (banks[bank].cutoff < 0) {
+        banks[bank].cutoff = Bank::bankSize;
+    }
+}
+
+void AudioSynthOscBank::Bank::update() {
+    arm_cmplx_mult_cmplx_f32((float*) values.data(), (float*) multipliers.data(), (float*) values.data(), bankSize);
+}
+
+float AudioSynthOscBank::Bank::sample() {
+    float s = 0;
+    for (int i = 0; i < cutoff; i++) {
+        s += values[i].im * amplitudes[i];
+    }
+    return s;
+}
+
+void AudioSynthOscBank::update() {
+    auto block = allocate();
+    if (!block) return;
+
+    for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+        float s = 0;
+        for (int j = 0; j < nBanks; j++) {
+            banks[j].update();
+            if (banks[j].active)
+                s += banks[j].sample();
+        }
+
+        block->data[i] = s * 32000;
+    }
+
+    transmit(block);
+    release(block);
 }
