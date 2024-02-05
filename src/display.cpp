@@ -23,12 +23,11 @@ Adafruit_SSD1351 main_oled = Adafruit_SSD1351(
 // scope display
 //U8G2_SH1106_128X64_NONAME_F_4W_HW_SPI
 U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI 
-    scope_oled(U8G2_R0, 10, 17, 16);
+    scope_oled(U8G2_R0, SCOPE_CS_PIN, SCOPE_DC_PIN, SCOPE_RESET_PIN);
 
 void initialize_oleds() {
   SPI1.setCS(CS_PIN);
-  SPI1.setMISO(
-      39); // move this off of the "normal" pin at the head of the board
+  SPI1.setMISO(MISO_PIN); // move this off of the "normal" pin at the head of the board
 
   main_oled.begin(12000000);
   main_oled.cp437(true); // we're not legacy code, fix the character map bug

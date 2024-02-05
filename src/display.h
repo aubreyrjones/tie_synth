@@ -11,12 +11,20 @@ namespace display {
 constexpr byte SCREEN_WIDTH = 128;
 constexpr byte SCREEN_HEIGHT = 128;
 
-// Pins
-constexpr byte CS_PIN = 38; // for CS1: 38
+// Pins for main color OLED
+// On SPI1
+constexpr byte CS_PIN = 38;
+constexpr byte MISO_PIN = 39;
 constexpr byte DC_PIN = 30;
 constexpr byte RST_PIN = 31;
-constexpr byte DIN_PIN = 26; // for MOSI1: 26
-constexpr byte CLK_PIN = 27; // for SCK1: 27
+constexpr byte DIN_PIN = 26; 
+constexpr byte CLK_PIN = 27; 
+
+// Pins for scope OLED
+// on SPI (0)
+constexpr byte SCOPE_CS_PIN = 10;
+constexpr byte SCOPE_DC_PIN = 17;
+constexpr byte SCOPE_RESET_PIN = 16; 
 
 extern Adafruit_SSD1351 main_oled;
 extern U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI 

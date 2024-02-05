@@ -444,9 +444,10 @@ public:
     bool focused(Widget const& w) { return focusedWidget == &w; }
     
     /// @brief Link a new screen to this one in the given direction.
-    void link(Screen* neighbor, Direction dir) {
+    Screen* link(Screen* neighbor, Direction dir) {
         neighbors[dir] = neighbor;
         neighbor->neighbors[opposite_direction(dir)] = this;
+        return neighbor;
     }
 
     /// @brief Get the neighboring screen in the given direction, or nullptr if none exists.

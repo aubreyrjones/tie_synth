@@ -6,44 +6,58 @@ namespace gui {
 
 static struct AdditiveScreen : public Screen {
 
+    DualNumericalWidget<float> mixes;
     DualWidget<NumericalWidget<int>, NumericalWidget<float>> filterTypeFreq;
 
     AdditiveScreen() : 
         Screen(),
+        mixes(audio::as_module.spectralMix, audio::as_module.banksMix),
         filterTypeFreq(NumericalWidget(audio::as_module.debug), NumericalWidget(audio::as_module.frequency))
         
     {
-        focusedWidget = &filterTypeFreq;
+        mixes.link(filterTypeFreq);
+        focusedWidget = &mixes;
 
-        flowWidgets({0, 18}, &filterTypeFreq);
+        mixes.setIncrements(audio::small_f, audio::small_f);
+
+        flowWidgets({0, 18}, &mixes);
     }
 
     void draw() override {
         using namespace display;
 
-        drawHelper("Addington", colors::darkorange, 10, &filterTypeFreq);
+        drawHelper("Addington", colors::darkorange, 10, &mixes);
     }
 } 
 mainScreen; // instance
 
 
-static struct PartialEditor : public Screen {
-    int selectedPartial = 1;
+struct PartialEditor : public Screen {
+    int firstPartialOffset = 0;
+    int selectedPartial = 0;
 
-    PartialEditor() : Screen()
-    {}
+    PartialEditor() : Screen() {}
+
+    PartialEditor(int offset) : Screen(), firstPartialOffset(offset)
+    {
+    }
 
     virtual bool showPerf() override { return false; }
 
-    void draw() override {
-        using namespace display;
+    int referenced() {
+        return firstPartialOffset + selectedPartial;
+    }
 
+    void draw() override {
         using namespace display;
         using namespace colors;
 
         if (!dirty) return;
 
         main_oled.fillScreen(0); // clear the screen
+
+        main_oled.setCursor(0, 0);
+        main_oled.print(firstPartialOffset / 128);
 
         int partial = 0;
 
@@ -54,7 +68,7 @@ static struct PartialEditor : public Screen {
             main_oled.drawFastHLine(0, yh, 128, colors::darkgrey);
 
             for (int i = 0; i < 32; i++) {
-                auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[partial * 2]);
+                auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[(partial + firstPartialOffset) * 2]);
                 auto polar = em::to_polar(part);
                 float r = std::get<0>(polar);
                 float phase = std::get<1>(polar);
@@ -87,7 +101,7 @@ static struct PartialEditor : public Screen {
     }
 
     virtual void handleInput(WidgetInput const& event) {
-        auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[selectedPartial * 2]);
+        auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[referenced() * 2]);
 
         auto polar = em::to_polar(part);
 
@@ -95,10 +109,10 @@ static struct PartialEditor : public Screen {
         float phase = std::get<1>(polar);
 
         if (event == WidgetInput::RIGHT_DECR) {
-            r = em::clamp_incr(0, r, 100.f, 0.05f + r * -0.2f);
+            r = em::clamp_incr(0, r, 500.f, 0.05f + r * -0.2f);
         }
         else if (event == WidgetInput::RIGHT_INCR) {
-            r = em::clamp_incr(0, r, 100.f, 0.05f + r * 0.2f);
+            r = em::clamp_incr(0, r, 500.f, 0.05f + r * 0.2f);
         }
         else if (event == WidgetInput::RIGHT_REL) {
             r = 0;
@@ -142,13 +156,52 @@ static struct PartialEditor : public Screen {
         }
      }
 
-} partialEditor;
+};
+std::array<PartialEditor, (AudioSynthAdditive::partial_table_size / 2) / 128> partialEditors;
 
+
+// color table for FFT grid display.
+
+struct FFTGrid : public Screen {
+    FFTGrid() : Screen() {}
+
+    virtual bool showPerf() override { return false; }
+
+    void draw() override {
+        using namespace display;
+        using namespace colors;
+
+        if (!dirty) return;
+
+        main_oled.fillScreen(0); // clear the screen
+        
+        constexpr int binPxWidth = 8;
+        constexpr int binPxHeight = 8;
+
+        for (int y = 0; (y + binPxHeight) <= 128; y += binPxHeight){
+            for (int x = 0; (x + binPxWidth) <= 128; x += binPxWidth) {
+                main_oled.fillRoundRect(x, y, binPxWidth, binPxHeight, 2, (rand() & 0xffff));
+            }
+        }
+        
+        dirty = false;
+    }
+
+} fftGrid;
 
 static struct ScreenConstructor {
     ScreenConstructor() {
         // link our screens together
-        mainScreen.link(&partialEditor, East);
+        mainScreen.link(&partialEditors[0], East);
+        Screen *l = &partialEditors[0];
+        int i = 0;
+        for (auto & pe : partialEditors) {
+            pe.firstPartialOffset = i++ * 128;
+            l = l->link(&pe, South);
+        }
+
+        partialEditors[0].link(&fftGrid, East); // add in the FFT grid.
+
 
         // link to main graph
 
