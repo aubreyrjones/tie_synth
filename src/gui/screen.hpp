@@ -9,22 +9,35 @@
 
 namespace gui {
 
-enum class WidgetInput {
-    LEFT_DECR, // encoder turns
-    LEFT_INCR,
-    RIGHT_DECR,
-    RIGHT_INCR,
-
-    LEFT_PUSH, // encoder press and releases
-    LEFT_REL,
+enum class Input {
+    LEFT_ROTATE,
+    RIGHT_ROTATE,
+    LEFT_PUSH,
     RIGHT_PUSH,
-    RIGHT_REL,
 
-    NULL_INPUT
+    NAV_ROTATE,
+    NAV_SOUTH,
+    NAV_EAST,
+    NAV_NORTH,
+    NAV_WEST,
+    NAV_CENTER,
+
+    INVALID
+};
+
+enum class InputTransition {
+    DECR,
+    INCR,
+    PRESS,
+    RELEASE
+};
+
+struct InputEvent {
+    Input in;
+    InputTransition trans;
 };
 
 
-// Receives input from the encoders and their buttons.
 class Widget {
 protected:
     em::ivec topLeft;
@@ -42,7 +55,7 @@ public:
         return nextWidget;
     }
 
-    virtual void handleInput(WidgetInput event) {};
+    virtual void handleInput(InputEvent const& event) {};
 
     virtual int height() { return 0; }
     virtual int width() { return 0; }
@@ -128,26 +141,22 @@ public:
         return **aControl;
     }
 
-    virtual void handleInput(WidgetInput event) {
-        switch (event) {
-        case WidgetInput::LEFT_DECR:
-        case WidgetInput::RIGHT_DECR:
-            aControl->adjust(false, aIncrScale * aIncr(a()));
-            break;
-        case WidgetInput::RIGHT_INCR:
-        case WidgetInput::LEFT_INCR:
-            aControl->adjust(true, aIncrScale * aIncr(a()));
-            break;
-        case WidgetInput::LEFT_PUSH:
-        case WidgetInput::RIGHT_PUSH:
-            aIncrScale = 10;
-            break;
-        case WidgetInput::LEFT_REL:
-        case WidgetInput::RIGHT_REL:
-            aIncrScale = 1;
-            break;
-        default:
-            break;
+    virtual void handleInput(InputEvent const& event) override {
+        if (event.in == Input::LEFT_ROTATE || event.in == Input::RIGHT_ROTATE) {
+            if (event.trans == InputTransition::DECR) {
+                aControl->adjust(false, aIncrScale * aIncr(a()));
+            }
+            else {
+                aControl->adjust(true, aIncrScale * aIncr(a()));
+            }
+        }
+        else if (event.in == Input::LEFT_PUSH || event.in == Input::RIGHT_PUSH) {
+            if (event.trans == InputTransition::PRESS) {
+                aIncrScale = 10;
+            }
+            else {
+                aIncrScale = 1;
+            }
         }
     }
 };
@@ -196,21 +205,12 @@ public:
         right.draw(focused);
     }
 
-    virtual void handleInput(WidgetInput event) {
-        switch (event) {
-        case WidgetInput::LEFT_DECR:
-        case WidgetInput::LEFT_INCR:
-        case WidgetInput::LEFT_PUSH:
-        case WidgetInput::LEFT_REL:
+    virtual void handleInput(InputEvent const& event) override {
+        if (event.in == Input::LEFT_PUSH || event.in == Input::LEFT_ROTATE) {
             left.handleInput(event);
-            break;
-        case WidgetInput::RIGHT_DECR:
-        case WidgetInput::RIGHT_INCR:
-        case WidgetInput::RIGHT_PUSH:
-        case WidgetInput::RIGHT_REL:
+        }
+        else if (event.in == Input::RIGHT_PUSH || event.in == Input::RIGHT_ROTATE) {
             right.handleInput(event);
-        default:
-            break;
         }
     }
 };
@@ -318,18 +318,12 @@ public:
         control->set(std::get<1>(choices[nextIndex]));
     }
 
-    virtual void handleInput(WidgetInput event) override {
-        switch (event) {
-        case WidgetInput::LEFT_DECR:
-        case WidgetInput::RIGHT_DECR:
+    virtual void handleInput(InputEvent const& event) override {
+        if (event.trans == InputTransition::DECR) {
             changeChoice(-1);
-            break;
-        case WidgetInput::RIGHT_INCR:
-        case WidgetInput::LEFT_INCR:
+        }
+        else {
             changeChoice(1);
-            break;
-        default:
-            break;
         }
     }
 };
@@ -373,21 +367,12 @@ public:
         right.draw(focused);
     }
 
-    virtual void handleInput(WidgetInput event) {
-        switch (event) {
-        case WidgetInput::LEFT_DECR:
-        case WidgetInput::LEFT_INCR:
-        case WidgetInput::LEFT_PUSH:
-        case WidgetInput::LEFT_REL:
+    virtual void handleInput(InputEvent const& event) {
+        if (event.in == Input::LEFT_PUSH || event.in == Input::LEFT_ROTATE) {
             left.handleInput(event);
-            break;
-        case WidgetInput::RIGHT_DECR:
-        case WidgetInput::RIGHT_INCR:
-        case WidgetInput::RIGHT_PUSH:
-        case WidgetInput::RIGHT_REL:
+        }
+        else if (event.in == Input::RIGHT_PUSH || event.in == Input::RIGHT_ROTATE) {
             right.handleInput(event);
-        default:
-            break;
         }
     }
 };
@@ -415,6 +400,11 @@ constexpr Direction opposite_direction(Direction dir) {
 
     return -1;
 }
+
+class FilePicker {
+    void draw();
+    void handleInput();
+};
 
 /**
  * A single, stateful instance of a particular screen.
@@ -485,13 +475,14 @@ public:
     }
 
     /// @brief Pass inputs to the focused widget.
-    virtual void handleInput(WidgetInput const& event) {
-        if (!focusedWidget) return;
+    virtual void passInputToWidget(InputEvent const& event) {
         if (focusedWidget) {
             focusedWidget->handleInput(event);
             focusedWidget->draw(true); // we must be focused if we're getting input
         }
     }
+
+    virtual bool handleInput(InputEvent const& ev);
 
     virtual bool showPerf() { return true; }
     virtual bool hasScope() { return false; }
@@ -507,5 +498,11 @@ extern Screen* rootScreen;
 extern Screen* activeScreen;
 
 Screen* go_to_screen(Screen *s);
+
+
+/// @brief Handle raw input from the panel controller. This is in the form of MIDI CC messages.
+/// @param cc which control was changed.
+/// @param val the new value. This should be _either_ 0 or 127, as all controls are binary.
+void handleUserInput(int cc, int val);
 
 }

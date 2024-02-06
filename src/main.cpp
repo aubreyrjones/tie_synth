@@ -48,73 +48,13 @@ void setup() {
   audio::va_module.doSetup();
   audio::as_module.doSetup();
 
-  Serial.println("Finished synth setup.");
-
-  Serial.println(audio::as_module.analyzer.getReader()->length());
+  Serial.println("Finished synth setup.\nInitializing controls.");
 
   // run all controls to initialize them.
   audio::run_all_control_updates();
 
 }
 
-gui::WidgetInput cc_to_input_event(midi::DataByte const& cc, midi::DataByte const& val) {
-  if (cc == 1) {
-    if (val) {
-      return gui::WidgetInput::RIGHT_INCR;
-    }
-    else {
-      return gui::WidgetInput::RIGHT_DECR;
-    }
-  }
-
-  if (cc == 2) {
-    if (val) {
-      return gui::WidgetInput::LEFT_INCR;
-    }
-    else {
-      return gui::WidgetInput::LEFT_DECR;
-    }
-  }
-
-  if (cc == 8) {
-    if (val) {
-      return gui::WidgetInput::RIGHT_PUSH;
-    }
-    else {
-      return gui::WidgetInput::RIGHT_REL;
-    }
-  }
-
-  if (cc == 9) {
-    if (val) {
-      return gui::WidgetInput::LEFT_PUSH;
-    }
-    else {
-      return gui::WidgetInput::LEFT_REL;
-    }
-  }
-
-  return gui::WidgetInput::NULL_INPUT;
-}
-
-
-bool handle_nav_arrows(int cc, bool push) {
-  auto direction = -1;
-  switch (cc) {
-    case 3: direction = gui::South; break;
-    case 4: direction = gui::East; break;
-    case 5: direction = gui::North; break;
-    case 6: direction = gui::West; break;
-  }
-
-  if (direction < 0) return false; // not our CC
-
-  if (!push) { // move on release
-    gui::go_to_screen(gui::activeScreen->nextScreen(direction));
-  }
-
-  return true;
-}
 
 void draw_default_scope() {
   using namespace display;
@@ -167,20 +107,8 @@ void loop() {
     auto cc = serial_midi.getData1();
     auto signal = serial_midi.getData2();
     
-    if (cc == 0) {
-      if (signal) { // positive increment
-        gui::activeScreen->nextWidget();
-      }
-      else {
-        gui::activeScreen->prevWidget();
-      }
-    }
-    else if (cc == 1 || cc == 2 || cc == 8 || cc == 9) {
-      gui::activeScreen->handleInput(cc_to_input_event(cc, signal));
-    }
-    else if (handle_nav_arrows(cc, signal)) {
-      //intentionally blank.
-    }
+    gui::handleUserInput(cc, signal);
+
   }
 
   if (scopeRepaint.check()) {

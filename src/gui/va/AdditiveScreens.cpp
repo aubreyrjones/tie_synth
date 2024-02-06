@@ -100,7 +100,7 @@ struct PartialEditor : public Screen {
         sully();
     }
 
-    virtual void handleInput(WidgetInput const& event) {
+    virtual void passInputToWidget(InputEvent const& event) override {
         auto& part = reinterpret_cast<std::tuple<float, float>&>(audio::as_module.partials()[referenced() * 2]);
 
         auto polar = em::to_polar(part);
@@ -108,26 +108,30 @@ struct PartialEditor : public Screen {
         float r = std::get<0>(polar);
         float phase = std::get<1>(polar);
 
-        if (event == WidgetInput::RIGHT_DECR) {
-            r = em::clamp_incr(0, r, 500.f, 0.05f + r * -0.2f);
+        if (event.in == Input::RIGHT_ROTATE) {
+            if (event.trans == InputTransition::DECR) {
+                r = em::clamp_incr(0, r, 500.f, 0.05f + r * -0.2f);
+            }
+            else {
+                r = em::clamp_incr(0, r, 500.f, 0.05f + r * 0.2f);
+            }
         }
-        else if (event == WidgetInput::RIGHT_INCR) {
-            r = em::clamp_incr(0, r, 500.f, 0.05f + r * 0.2f);
-        }
-        else if (event == WidgetInput::RIGHT_REL) {
-            r = 0;
+        else if (event.in == Input::RIGHT_PUSH && event.trans == InputTransition::RELEASE) {
+            r = 0; 
             phase = 0;
         }
 
         constexpr float phaseIncr = PI / 32.f;
 
-        if (event == WidgetInput::LEFT_INCR) {
-            phase -= phaseIncr;
+        if (event.in == Input::LEFT_ROTATE) {
+            if (event.trans == InputTransition::DECR) {
+                phase -= phaseIncr;
+            }
+            else {
+                phase += phaseIncr;
+            }
         }
-        else if (event == WidgetInput::LEFT_DECR) {
-            phase += phaseIncr;
-        }
-        else if (event == WidgetInput::LEFT_REL) {
+        else if (event.in == Input::LEFT_PUSH && event.trans == InputTransition::RELEASE) {
             phase = 0;
         }
 
