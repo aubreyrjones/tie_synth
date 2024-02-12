@@ -257,45 +257,54 @@ static int32_t taylor(uint32_t ph)
 // https://twitter.com/josyboelen/status/1148227258693431296
 
 
+float taylorf(uint32_t ph) {
+    return taylor(ph) / 2147483648.f;
+}
+
 
 void AudioSynthOscBank::frequency(int bank, float f) {
-    banks[bank].cutoff = -1;
-    banks[bank].fundamental = f;
-    for (int i = 0; i < Bank::bankSize; i++) {
-        auto harmonicFreq = f * (i + 1);
-        auto phaseIncrement = harmonicFreq *  (2 * PI / AUDIO_SAMPLE_RATE_EXACT);
-        banks[bank].multipliers[i].re = fast_cos(phaseIncrement);
-        banks[bank].multipliers[i].im = fast_sin(phaseIncrement);
-        if (banks[bank].cutoff < 0 && harmonicFreq > AUDIO_SAMPLE_RATE_EXACT / 2) {
-            banks[bank].cutoff = i;
+    banks[bank].frequency(f);
+}
+
+void AudioSynthOscBank::Bank::frequency(float f) {
+    constexpr float systemPhaseConstant = (4294967296.0f / AUDIO_SAMPLE_RATE_EXACT);
+
+    if (f > systemNyquistFrequency) {
+        f = systemNyquistFrequency;
+    }
+
+    fundamental = f;
+    
+    cutoff = -1;
+
+    for (int i = 0; i < bankSize; i++) {
+        float harmonicFreq = f * (i + 1);
+        phaseIncrements[i] = harmonicFreq * systemPhaseConstant;
+
+        if (cutoff < 0 && harmonicFreq > systemNyquistFrequency) {
+            cutoff = i;
         }
     }
 
-    // normalize the multipliers
-    float temp[Bank::bankSize];
-    arm_cmplx_mag_f32((float*) banks[bank].multipliers.data(), temp, Bank::bankSize);
-    for (int i = 0; i < Bank::bankSize; i++) {
-        if (temp[i] > 0) {
-            temp[i] = 1.f / temp[i];
-        }
-    }
-    arm_cmplx_mult_real_f32((float*) banks[bank].multipliers.data(), temp, (float*) banks[bank].multipliers.data(), Bank::bankSize);
-
-    if (banks[bank].cutoff < 0) {
-        banks[bank].cutoff = Bank::bankSize;
+    if (cutoff < 0) {
+        cutoff = bankSize;
     }
 }
 
 void AudioSynthOscBank::Bank::update() {
-    arm_cmplx_mult_cmplx_f32((float*) values.data(), (float*) multipliers.data(), (float*) values.data(), bankSize);
+    for (int i = 0; i < bankSize; i++) {
+        accumulators[i] += phaseIncrements[i];
+    }
 }
 
-float AudioSynthOscBank::Bank::sample() {
-    float s = 0;
-    for (int i = 0; i < cutoff; i++) {
-        s += values[i].im * amplitudes[i];
+float AudioSynthOscBank::sample(Bank &b) {
+    float accum = 0;
+
+    for (int i = 0; i < b.cutoff; i++) {
+        accum += voice.amplitudes[i] * taylorf(b.accumulators[i] + voice.phaseOffsets[i]);
     }
-    return s;
+
+    return accum;
 }
 
 void AudioSynthOscBank::update() {
@@ -307,7 +316,7 @@ void AudioSynthOscBank::update() {
         for (int j = 0; j < nBanks; j++) {
             banks[j].update();
             if (banks[j].active)
-                s += banks[j].sample();
+                s += sample(banks[j]);
         }
 
         block->data[i] = s * 32000;
@@ -315,6 +324,19 @@ void AudioSynthOscBank::update() {
 
     transmit(block);
     release(block);
+}
+
+void AudioSynthOscBank::previewVoice(float *out, int nSamples) {
+    Bank tempBank;
+    for (int i = 0; i < bankSize; i++) {
+        tempBank.phaseIncrements[i] = (i + 1) * (4294967296.0f / (nSamples));
+    }
+    tempBank.cutoff = bankSize;
+
+    for (int i = 0; i < nSamples; i++) {
+        tempBank.update();       
+        out[i] = sample(tempBank);
+    }
 }
 
 // ================================================================
@@ -353,7 +375,7 @@ void init_fft(arm_rfft_fast_instance_f32 &fftInstance) {
     }
 }
 
-AudioSynthIFFTBank::AudioSynthIFFTBank() : AudioStream(0, nullptr) {
-    init_fft<fftBufferLength>(fftInstance);
-}
+// AudioSynthIFFTBank::AudioSynthIFFTBank() : AudioStream(0, nullptr) {
+//     init_fft<fftBufferLength>(fftInstance);
+// }
 

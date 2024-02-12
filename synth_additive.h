@@ -7,6 +7,9 @@
 #include <arm_math.h>    // github.com/PaulStoffregen/cores/blob/master/teensy4/arm_math.h
 #include <array>
 
+/// @brief What's the Nyquist frequency for the environment?
+static constexpr auto systemNyquistFrequency = AUDIO_SAMPLE_RATE_EXACT / 2.f;
+
 class AudioSynthAdditive : public AudioStream {
 public:
 private:
@@ -70,35 +73,42 @@ public:
 
 class AudioSynthOscBank : public AudioStream {
 public:
-    static constexpr auto nBanks = 16;
+    static constexpr auto nBanks = 4;
+    static constexpr auto bankSize = 16;
 
-protected:
-    struct complex {
-        float re = 1, im = 0;
+    struct VoicePrototype {
+        std::array<float, bankSize> amplitudes {};
+        std::array<uint32_t, bankSize> phaseOffsets {};
     };
 
+protected:
     struct Bank {
-        static constexpr auto bankSize = 1;
-        float fundamental;
-        std::array<complex, bankSize> values;
-        std::array<complex, bankSize> multipliers;
-        std::array<float, bankSize> amplitudes;
+        float fundamental = 172;
+        std::array<uint32_t, bankSize> accumulators {};
+        std::array<uint32_t, bankSize> phaseIncrements {};
         int cutoff = 0;
-
         bool active = false;
 
         void update();
-
         float sample();
+        void frequency(float f);
 
         Bank() {
-            std::fill(values.begin(), values.end(), complex {1, 0});
-            std::fill(multipliers.begin(), multipliers.end(), complex {1, 0});
-            std::fill(amplitudes.begin(), amplitudes.end(), 1);
+            std::fill(accumulators.begin(), accumulators.end(), 0);
+            std::fill(phaseIncrements.begin(), phaseIncrements.end(), 0);
         }
     };
 
+    /// @brief Sample the given bank.
+    /// @param b reference to the bank to sample
+    /// @return denormalized floating point signal
+    float sample(Bank &b);
+
+    /// @brief The oscillator banks.
     std::array<Bank, nBanks> banks {};
+
+    /// @brief The voice profile we're playing.
+    VoicePrototype voice {};
 
     bool _debug = false;
 
@@ -107,6 +117,8 @@ public:
         for (int i = 0; i < nBanks; i++) {
             frequency(i, 440);
         }
+
+        voice.amplitudes[0] = 1;
     }
 
     void frequency(int bank, float f);
@@ -115,46 +127,50 @@ public:
 
     void debug(bool d) { _debug = d; }
 
+    VoicePrototype& getVoice() { return voice; }
+
+    void previewVoice(float *out, int nSamples);
+
     virtual void update(void) override;
 };
 
 
-class AudioSynthIFFTBank : public AudioStream {
-public:
-    /// @brief How many audible partials will each voice support, maximally?
-    static constexpr auto nPartials = 16;
+// class AudioSynthIFFTBank : public AudioStream {
+// public:
+//     /// @brief How many audible partials will each voice support, maximally?
+//     static constexpr auto nPartials = 16;
 
-    /// @brief How long is the FFT buffer (at least twice the number of partials)
-    static constexpr auto fftBufferLength = std::max(256, nPartials * 2);
+//     /// @brief How long is the FFT buffer (at least twice the number of partials)
+//     static constexpr auto fftBufferLength = std::max(256, nPartials * 2);
 
-    using FFTBuffer = std::array<float, fftBufferLength>;
+//     using FFTBuffer = std::array<float, fftBufferLength>;
 
-    /// @brief What's the Nyquist frequency for the environment?
-    static constexpr auto nyquistFreq = AUDIO_SAMPLE_RATE_EXACT / 2.f;
+//     /// @brief What's the Nyquist frequency for the environment?
+//     static constexpr auto nyquistFreq = AUDIO_SAMPLE_RATE_EXACT / 2.f;
 
-    /// @brief How many simultaneous voices?
-    static constexpr auto nVoices = 1;
+//     /// @brief How many simultaneous voices?
+//     static constexpr auto nVoices = 1;
 
-    struct VoiceState {
-        FFTBuffer partials;
-        FFTBuffer signalA, signalB;
-        FFTBuffer *front = &signalA, *back = &signalB;
+//     struct VoiceState {
+//         FFTBuffer partials;
+//         FFTBuffer signalA, signalB;
+//         FFTBuffer *front = &signalA, *back = &signalB;
 
-        void swap() { std::swap(front, back); }
-    };
+//         void swap() { std::swap(front, back); }
+//     };
 
-protected:
+// protected:
 
-    /// @brief State for each voice.
-    std::array<VoiceState, nVoices> voices {};
+//     /// @brief State for each voice.
+//     std::array<VoiceState, nVoices> voices {};
 
-    /// @brief CMSIS FFT structure.
-    arm_rfft_fast_instance_f32 fftInstance;
+//     /// @brief CMSIS FFT structure.
+//     arm_rfft_fast_instance_f32 fftInstance;
 
-public:
+// public:
 
-    AudioSynthIFFTBank();
-};
+//     AudioSynthIFFTBank();
+// };
 
 #endif
 
