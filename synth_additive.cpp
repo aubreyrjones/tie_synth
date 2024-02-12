@@ -1,5 +1,7 @@
 #include "synth_additive.h"
 #include <algorithm>
+#include "utility/dspinst.h"
+
 
 /// @brief Fastest available sinf() function.
 constexpr auto fast_sin = arm_sin_f32;
@@ -222,6 +224,40 @@ void AudioSynthAdditive::update() {
     release(block);
 }
 
+// =====================================================================
+
+// High accuracy 11th order Taylor Series Approximation
+// input is 0 to 0xFFFFFFFF, representing 0 to 360 degree phase
+// output is 32 bit signed integer, top 25 bits should be very good
+//  https://www.pjrc.com/high-precision-sine-wave-synthesis-using-taylor-series/
+static int32_t taylor(uint32_t ph)
+{
+	int32_t angle, sum, p1, p2, p3, p5, p7, p9, p11;
+
+	if (ph >= 0xC0000000 || ph < 0x40000000) {                            // ph:  0.32
+		angle = (int32_t)ph; // valid from -90 to +90 degrees
+	} else {
+		angle = (int32_t)(0x80000000u - ph);                        // angle: 2.30
+	}
+	p1 =  multiply_32x32_rshift32_rounded(angle, 1686629713) << 2;        // p1:  2.30
+	p2 =  multiply_32x32_rshift32_rounded(p1, p1) << 1;                   // p2:  3.29
+	p3 =  multiply_32x32_rshift32_rounded(p2, p1) << 2;                   // p3:  3.29
+	sum = multiply_subtract_32x32_rshift32_rounded(p1, p3, 1431655765);   // sum: 2.30
+	p5 =  multiply_32x32_rshift32_rounded(p3, p2);                        // p5:  6.26
+	sum = multiply_accumulate_32x32_rshift32_rounded(sum, p5, 572662306);
+	p7 =  multiply_32x32_rshift32_rounded(p5, p2);                        // p7:  9.23
+	sum = multiply_subtract_32x32_rshift32_rounded(sum, p7, 109078534);
+	p9 =  multiply_32x32_rshift32_rounded(p7, p2);                        // p9: 12.20
+	sum = multiply_accumulate_32x32_rshift32_rounded(sum, p9, 12119837);
+	p11 = multiply_32x32_rshift32_rounded(p9, p2);                       // p11: 15.17
+	sum = multiply_subtract_32x32_rshift32_rounded(sum, p11, 881443);
+	return sum <<= 1;                                                 // return:  1.31
+}
+// alternate forms which might be more efficient?
+// https://twitter.com/josyboelen/status/1148227258693431296
+
+
+
 void AudioSynthOscBank::frequency(int bank, float f) {
     banks[bank].cutoff = -1;
     banks[bank].fundamental = f;
@@ -280,3 +316,44 @@ void AudioSynthOscBank::update() {
     transmit(block);
     release(block);
 }
+
+// ================================================================
+
+/// @brief If this is throwing up problems, you've set the `partial_table_size` to an unsupported value.
+template<bool flag = false> void static_no_match() { static_assert(flag, "FFT size (`N`) not supported."); }
+
+template <int N>
+void init_fft(arm_rfft_fast_instance_f32 &fftInstance) {
+    if constexpr (N == 32) {
+        arm_rfft_fast_init_32_f32(&fftInstance);
+    }
+    else if constexpr (N == 64) {
+        arm_rfft_fast_init_64_f32(&fftInstance);
+    }
+    else if constexpr (N == 128) {
+        arm_rfft_fast_init_128_f32(&fftInstance);
+    }
+    else if constexpr (N == 256) {
+        arm_rfft_fast_init_256_f32(&fftInstance);
+    }
+    else if constexpr (N == 512) {
+        arm_rfft_fast_init_512_f32(&fftInstance);
+    }
+    else if constexpr (N == 1024) {
+        arm_rfft_fast_init_1024_f32(&fftInstance);
+    }
+    else if constexpr (N == 2048) {
+        arm_rfft_fast_init_2048_f32(&fftInstance);
+    }
+    else if constexpr (N == 4096) {
+        arm_rfft_fast_init_4096_f32(&fftInstance);
+    }
+    else {
+        static_no_match();
+    }
+}
+
+AudioSynthIFFTBank::AudioSynthIFFTBank() : AudioStream(0, nullptr) {
+    init_fft<fftBufferLength>(fftInstance);
+}
+

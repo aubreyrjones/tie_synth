@@ -30,7 +30,7 @@ public:
 
 public:
 
-    AudioSynthAdditive(void) : AudioStream(0, NULL) {
+    AudioSynthAdditive(void) : AudioStream(0, nullptr) {
         // The larger FFT tables get really big. By making this `if constexpr`, it ensures
         // we only ever reference the right-sized function. This means we only pull in the
         // tables we actually need.
@@ -116,6 +116,44 @@ public:
     void debug(bool d) { _debug = d; }
 
     virtual void update(void) override;
+};
+
+
+class AudioSynthIFFTBank : public AudioStream {
+public:
+    /// @brief How many audible partials will each voice support, maximally?
+    static constexpr auto nPartials = 16;
+
+    /// @brief How long is the FFT buffer (at least twice the number of partials)
+    static constexpr auto fftBufferLength = std::max(256, nPartials * 2);
+
+    using FFTBuffer = std::array<float, fftBufferLength>;
+
+    /// @brief What's the Nyquist frequency for the environment?
+    static constexpr auto nyquistFreq = AUDIO_SAMPLE_RATE_EXACT / 2.f;
+
+    /// @brief How many simultaneous voices?
+    static constexpr auto nVoices = 1;
+
+    struct VoiceState {
+        FFTBuffer partials;
+        FFTBuffer signalA, signalB;
+        FFTBuffer *front = &signalA, *back = &signalB;
+
+        void swap() { std::swap(front, back); }
+    };
+
+protected:
+
+    /// @brief State for each voice.
+    std::array<VoiceState, nVoices> voices {};
+
+    /// @brief CMSIS FFT structure.
+    arm_rfft_fast_instance_f32 fftInstance;
+
+public:
+
+    AudioSynthIFFTBank();
 };
 
 #endif
