@@ -118,7 +118,7 @@ public:
             frequency(i, 440);
         }
 
-        voice.amplitudes[0] = 1;
+        voice.amplitudes[0] = 0.5f;
     }
 
     void frequency(int bank, float f);

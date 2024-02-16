@@ -194,3 +194,17 @@ bool AudioEffectEnvelope::isSustain()
 	return false;
 }
 
+
+// =========================================
+
+void AudioEffectBreathEnvelope::update() {
+	audio_block_t *block;
+    block = receiveWritable();
+
+    if (!block) return;
+
+    
+
+    transmit(block);
+    release(block);
+}

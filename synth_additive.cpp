@@ -341,7 +341,7 @@ void AudioSynthOscBank::previewVoice(float *out, int nSamples) {
 
 // ================================================================
 
-/// @brief If this is throwing up problems, you've set the `partial_table_size` to an unsupported value.
+/// @brief If this is throwing up problems, you've tried to initialize an FFT with an unsupported size.
 template<bool flag = false> void static_no_match() { static_assert(flag, "FFT size (`N`) not supported."); }
 
 template <int N>

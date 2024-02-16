@@ -102,5 +102,17 @@ private:
 
 };
 
+
+class AudioEffectBreathEnvelope : public AudioStream {
+protected:
+	audio_block_t *inputQueueArray[1];
+public:
+    AudioEffectBreathEnvelope() : AudioStream(1, inputQueueArray) {
+
+    }
+
+    virtual void update() override;
+};
+
 #undef SAMPLES_PER_MSEC
 #endif
