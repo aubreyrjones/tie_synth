@@ -20,6 +20,7 @@ AudioSynthWaveformDc     va_filter_control; //xy=1244,712
 AudioFilterStateVariable va_filter;      //xy=1316,652
 AudioMixer4              add_mixer;         //xy=1357.3333740234375,955.3333740234375
 AudioMixer4              va_filter_mixer; //xy=1541,655
+AudioEffectBreathEnvelope breath1;        //xy=1610.333251953125,956.3333740234375
 AudioAmplifier           va_breath_amp;  //xy=1756,655
 AudioMixer4              output_mixer;   //xy=1929,937
 AudioAmplifier           output_amp;     //xy=2111,936
@@ -43,12 +44,13 @@ AudioConnection          patchCord15(va_filter_control, 0, va_filter, 1);
 AudioConnection          patchCord16(va_filter, 0, va_filter_mixer, 0);
 AudioConnection          patchCord17(va_filter, 1, va_filter_mixer, 1);
 AudioConnection          patchCord18(va_filter, 2, va_filter_mixer, 2);
-AudioConnection          patchCord19(add_mixer, 0, output_mixer, 1);
+AudioConnection          patchCord19(add_mixer, breath1);
 AudioConnection          patchCord20(va_filter_mixer, va_breath_amp);
-AudioConnection          patchCord21(va_breath_amp, 0, output_mixer, 0);
-AudioConnection          patchCord22(output_mixer, output_amp);
-AudioConnection          patchCord23(output_amp, 0, analog_out, 0);
-AudioConnection          patchCord24(output_amp, 0, analog_out, 1);
+AudioConnection          patchCord21(breath1, 0, output_mixer, 1);
+AudioConnection          patchCord22(va_breath_amp, 0, output_mixer, 0);
+AudioConnection          patchCord23(output_mixer, output_amp);
+AudioConnection          patchCord24(output_amp, 0, analog_out, 0);
+AudioConnection          patchCord25(output_amp, 0, analog_out, 1);
 
 AudioControlSGTL5000     sgtl5000_1;     //xy=205,334
 // GUItool: end automatically generated code

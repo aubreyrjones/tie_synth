@@ -4,7 +4,7 @@
 
 namespace gui {
 
-std::array cc_table {
+constexpr std::array cc_table {
     Input::NAV_ROTATE,
     Input::RIGHT_ROTATE,
     Input::LEFT_ROTATE,
@@ -16,6 +16,8 @@ std::array cc_table {
     Input::RIGHT_PUSH,
     Input::LEFT_PUSH
 };
+
+constexpr int cc_table_size = cc_table.size();
 
 bool handle_nav_arrows(int cc, bool push) {
     auto direction = -1;
@@ -45,7 +47,7 @@ bool handle_nav_arrows(int cc, bool push) {
 }
 
 InputEvent decode_event(int cc, int val) {
-    if (cc < 0 || cc > cc_table.size()) return InputEvent {Input::INVALID, InputTransition::DECR};
+    if (cc < 0 || cc > cc_table_size) return InputEvent {Input::INVALID, InputTransition::DECR};
     
     Input in = cc_table[cc];
     InputTransition trans;

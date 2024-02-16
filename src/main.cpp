@@ -11,6 +11,7 @@ AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 #include "audio/Control.hpp"
 #include "audio/va/VASynth.hpp"
 #include "audio/additive/AddSynth.hpp"
+#include "midi_impl.hpp"
 
 constexpr float hw_output_volume = 0.5f;
 constexpr size_t n_audio_blocks_allocated = 64;
@@ -33,6 +34,10 @@ void setup() {
   Serial.begin(38400);                  // terminal with computer
 
   Serial.print("Startup.");
+
+  usbMIDI.begin();
+  usbMIDI.setHandleNoteOn(midi_impl::recvNoteOn);
+  usbMIDI.setHandleNoteOff(midi_impl::recvNoteOff);
 
   serial_midi.begin(MIDI_CHANNEL_OMNI); // listen on all channels, we'll sort it out ourselves.
 
@@ -84,6 +89,7 @@ bool blankMode = false;
 void loop() {
   using namespace display;
 
+  usbMIDI.read();
   bool has_midi_input = serial_midi.read();
 
   if (has_midi_input) {

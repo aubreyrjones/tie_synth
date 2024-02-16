@@ -34,5 +34,6 @@ extern U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI
 void initialize_oleds();
 
 void draw_buffer_in_scope(float *data);
+void draw_buffer_in_scope2(float *data);
 
 }

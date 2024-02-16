@@ -147,7 +147,7 @@ struct PartialEditor : public Screen {
     int direction = 1;
     virtual void drawScope() {
         display::draw_buffer_in_scope(additive1.samples().data() + offset);
-        if (offset > 0 && offset < 128) {
+        if (offset > 0 && offset < (additive1.samples().size() - 128)) {
             offset += direction;
         }
         else if (offset <= 0) {
@@ -163,6 +163,111 @@ struct PartialEditor : public Screen {
 };
 std::array<PartialEditor, (AudioSynthAdditive::partial_table_size / 2) / 128> partialEditors;
 
+
+struct BankWaveEditor : public Screen {
+    int selectedHarmonic = 0;
+
+    BankWaveEditor() : Screen() {}
+
+    void draw() override {
+        using namespace display;
+        using namespace colors;
+
+        if (!dirty) return;
+
+        main_oled.fillScreen(0); // clear the screen
+
+        int partial = 0;
+
+        for (int row = 0; row < 1; row++) {
+            constexpr auto rowHeight = 112;
+            constexpr auto halfHeight = rowHeight / 2;
+            int y = row * rowHeight;
+            int yh = y + halfHeight;
+
+            main_oled.drawFastHLine(0, yh, 128, colors::darkgrey);
+
+            for (int i = 0; i < AudioSynthOscBank::bankSize; i++) {
+                constexpr auto boxWidth = 128 / AudioSynthOscBank::bankSize;
+                constexpr auto innerWidth = boxWidth - 2;
+
+                auto const& voice = audio::as_module.bankVoice();
+                auto amp = voice.amplitudes[i];
+                auto phase = voice.phaseOffsets[i] / 4294967296.f;
+
+                if (partial == selectedHarmonic) 
+                    main_oled.drawRect(i * boxWidth, y, boxWidth, rowHeight, colors::cornflowerblue);
+
+                int boxHeight = amp * (halfHeight - 1);
+                main_oled.fillRect(i * boxWidth + 1, yh - boxHeight, innerWidth, boxHeight, colors::darkorange);
+
+                boxHeight = phase * (halfHeight - 1);
+                main_oled.fillRect(i * boxWidth + 1, yh, innerWidth, boxHeight, colors::hotpink);
+
+                partial++;
+            }
+        }
+
+        dirty = false;
+    }
+
+    virtual void passInputToWidget(InputEvent const& event) override {
+        auto & voice = audio::as_module.bankVoice();
+        auto & amp = voice.amplitudes[selectedHarmonic];
+        auto & phase = voice.phaseOffsets[selectedHarmonic];
+
+        if (event.in == Input::RIGHT_ROTATE) {
+            if (event.trans == InputTransition::DECR) {
+                amp = em::clamp_incr(0, amp, 1.f, -0.01f);
+            }
+            else {
+                amp = em::clamp_incr(0, amp, 1.f, 0.01f);
+            }
+        }
+        else if (event.in == Input::RIGHT_PUSH && event.trans == InputTransition::RELEASE) {
+            amp = 0;
+            phase = 0;
+        }
+
+        constexpr uint32_t phaseIncr = 4294967296 / 128;
+
+        if (event.in == Input::LEFT_ROTATE) {
+            if (event.trans == InputTransition::DECR) {
+                phase -= phaseIncr;
+            }
+            else {
+                phase += phaseIncr;
+            }
+        }
+        else if (event.in == Input::LEFT_PUSH && event.trans == InputTransition::RELEASE) {
+            phase = 0;
+        }
+
+        sully();
+    }
+
+    virtual void nextWidget() override {
+        selectedHarmonic++;
+        if (selectedHarmonic >= AudioSynthOscBank::bankSize) selectedHarmonic = 0;
+        sully();
+    }
+
+    virtual void prevWidget() override { 
+        selectedHarmonic--;
+        if (selectedHarmonic < 0) selectedHarmonic = AudioSynthOscBank::bankSize - 1;
+        sully();
+    }
+
+    virtual bool hasScope() override { return true; }
+
+    virtual void drawScope() override {
+        float tempBuffer[128];
+        oscbank1.previewVoice(tempBuffer, 128);
+        display::draw_buffer_in_scope2(tempBuffer);
+     }
+    
+
+} bankWaveEditor;
 
 // color table for FFT grid display.
 
@@ -205,6 +310,7 @@ static struct ScreenConstructor {
         }
 
         partialEditors[0].link(&fftGrid, East); // add in the FFT grid.
+        fftGrid.link(&bankWaveEditor, East);
 
 
         // link to main graph

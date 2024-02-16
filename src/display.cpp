@@ -17,6 +17,15 @@ void draw_buffer_in_scope(float *data) {
     scope_oled.sendBuffer();
 }
 
+void draw_buffer_in_scope2(float *data) {
+    scope_oled.clearBuffer();
+    for (int i = 0; i < 128; i++) {
+        float s = data[i];
+        scope_oled.drawPixel(i, 32 + (32 * s));
+    }
+    scope_oled.sendBuffer();
+}
+
 // main display on SPI1 for menus and navigation.
 Adafruit_SSD1351 main_oled = Adafruit_SSD1351(
     SCREEN_WIDTH, SCREEN_HEIGHT, &SPI1, CS_PIN, DC_PIN, RST_PIN); // for SPI1
