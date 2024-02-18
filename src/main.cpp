@@ -13,6 +13,9 @@ AudioConnection patchCord_0(output_mixer, 0, scopeTap, 0);
 #include "audio/additive/AddSynth.hpp"
 #include "midi_impl.hpp"
 
+// Teensy-provided function to get the chip temperature.
+extern float tempmonGetTemp(void);
+
 constexpr float hw_output_volume = 0.5f;
 constexpr size_t n_audio_blocks_allocated = 64;
 
@@ -138,12 +141,15 @@ void loop() {
     main_oled.setTextSize(1);
     main_oled.setCursor(0, 128 - 8);
     main_oled.setTextColor(colors::white, 0);
-    main_oled.print("DSP:");
-    main_oled.print(AudioProcessorUsage(), 2);
-    main_oled.print("%");
+    main_oled.print("D:");
+    main_oled.print(AudioProcessorUsage(), 0);
+    main_oled.print("% ");
+
+    main_oled.print(tempmonGetTemp(), 0);
+    main_oled.print("C");
 
     main_oled.setCursor(64, 128 - 8);
-    main_oled.print("Mem:");
+    main_oled.print("M:");
     main_oled.print(AudioMemoryUsage());
     main_oled.print("(");
     main_oled.print(AudioMemoryUsageMax());
