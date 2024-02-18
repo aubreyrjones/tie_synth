@@ -4,7 +4,7 @@
 
 #include <Arduino.h>     // github.com/PaulStoffregen/cores/blob/master/teensy4/Arduino.h
 #include <AudioStream.h> // github.com/PaulStoffregen/cores/blob/master/teensy4/AudioStream.h
-#include <arm_math.h>    // github.com/PaulStoffregen/cores/blob/master/teensy4/arm_math.h
+#include <arm_math.h>    
 #include <array>
 
 /// @brief What's the Nyquist frequency for the environment?
