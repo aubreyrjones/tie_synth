@@ -7,14 +7,28 @@
 #include <arm_math.h>    
 #include <array>
 
+#include "timer-wheel.h"
+
 /// @brief What's the Nyquist frequency for the environment?
 static constexpr auto systemNyquistFrequency = AUDIO_SAMPLE_RATE_EXACT / 2.f;
+
+class AudioSynthAdditive;
+
+struct GrainEvent : public TimerEventInterface {
+    AudioSynthAdditive *synth;
+
+    GrainEvent(AudioSynthAdditive *s) : TimerEventInterface(), synth(s) {}
+
+    virtual void execute() override;
+};
 
 class AudioSynthAdditive : public AudioStream {
 public:
 private:
     /// @brief If this is throwing up problems, you've set the `partial_table_size` to an unsupported value.
     template<bool flag = false> void static_no_match() { static_assert(flag, "FFT size not supported."); }
+
+    TimerWheel grainScheduler {};
 
 public:
     static constexpr auto partial_table_size = 4096;
@@ -30,6 +44,8 @@ public:
     int rawPlaybackPhase = 0;
     
     bool doDebug = false;
+
+    int grainsOut = 0;
 
 public:
 
@@ -53,6 +69,9 @@ public:
             static_no_match();
         }
     }
+
+    void scheduleGrain();
+    void reapGrain() { if (--grainsOut < 0) grainsOut = 0; }
 
     /// @brief Get a reference to the partial array.
     /// @return A mutable reference to the partial array.

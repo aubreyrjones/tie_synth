@@ -194,12 +194,28 @@ inline float pitch_shift_single_cycle(buffer loop, buffer stream, float nativeSa
 } //namespace resample
 
 
+
+void GrainEvent::execute() {
+    synth->partials()[random(64, 128)] = random(6, 40);
+    synth->reapGrain();
+    delete this;
+}
+
+
 void AudioSynthAdditive::clearPartials() {
     std::fill(partialTable.begin(), partialTable.end(), 0.f);
 }
 
+void AudioSynthAdditive::scheduleGrain() {
+    if (grainsOut < 10) {
+        grainsOut++;
+        grainScheduler.schedule(new GrainEvent {this}, random(AUDIO_BLOCK_SAMPLES * 500, AUDIO_BLOCK_SAMPLES * 5000));
+    }
+}
 
 void AudioSynthAdditive::update() {
+
+    scheduleGrain();
 
     auto block = allocate();
     if (!block) return;
@@ -214,6 +230,7 @@ void AudioSynthAdditive::update() {
 
     int si = rawPlaybackPhase;
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+        grainScheduler.advance(1);
         int s =  32000 * signal.data()[si];
         block->data[i] = s;
         si = (si + 1) % signal_table_size;

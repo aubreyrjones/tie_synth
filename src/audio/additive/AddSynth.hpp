@@ -6,8 +6,6 @@
 #include "Analyzer.hpp"
 #include "../Synth.hpp"
 
-#include "../../timer-wheel.h"
-
 namespace audio {
 
 struct AdditiveSynth : public Synth {
@@ -32,9 +30,6 @@ struct AdditiveSynth : public Synth {
     virtual void noteOn(NoteNumber note, float velocity) override;
     virtual void noteOff(NoteNumber note, float velocity) override;
     virtual void controlChange(CCNumber cc, byte value) override;
-
-protected:
-    TimerWheel scheduler {};
 };
 
 extern AdditiveSynth as_module;
