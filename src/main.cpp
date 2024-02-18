@@ -64,8 +64,8 @@ void setup() {
 void draw_default_scope() {
   using namespace display;
   scope_oled.clearBuffer();
-  for (int i = 0; i < 128; i++) {
-    float s = scopeTap.lastFrame[i] / 65536.f;
+  for (int i = 0; i < scopeTap.sampleBuffer.size(); i++) {
+    float s = scopeTap.sampleBuffer[i] / 65536.f;
     //float s = additive1.samples()[i];
     u8g2_uint_t height = abs(s) * 64;
     if (s > 0) {

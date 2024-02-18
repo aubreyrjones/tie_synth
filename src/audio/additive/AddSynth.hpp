@@ -4,11 +4,13 @@
 #include "Arduino.h"
 #include "../audio_externs.h"
 #include "Analyzer.hpp"
+#include "../Synth.hpp"
 
+#include "../../timer-wheel.h"
 
 namespace audio {
 
-struct AdditiveSynth {
+struct AdditiveSynth : public Synth {
     Control<float> spectralMix {"Mix.Spect", 1, {0, 2}, [this](float g) { add_mixer.gain(0, g); }};
     Control<float> banksMix {"Mix.Banks", 1, {0, 2}, [this](float g) { add_mixer.gain(1, g); }};
 
@@ -26,6 +28,13 @@ struct AdditiveSynth {
     decltype(oscbank1.getVoice()) bankVoice() { return oscbank1.getVoice(); }
 
     void doSetup();
+
+    virtual void noteOn(NoteNumber note, float velocity) override;
+    virtual void noteOff(NoteNumber note, float velocity) override;
+    virtual void controlChange(CCNumber cc, byte value) override;
+
+protected:
+    TimerWheel scheduler {};
 };
 
 extern AdditiveSynth as_module;

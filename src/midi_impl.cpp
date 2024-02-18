@@ -4,8 +4,7 @@
 namespace midi_impl {
 
 void recvNoteOn(byte channel, byte note, byte velocity) {
-    Serial.println("Note on");
-    audio::as_module.frequency.set(NoteFreqs[note]);
+    audio::as_module.noteOn(note, velocity / 127.f);
 }
 
 void recvNoteOff(byte channel, byte note, byte velocity) {
