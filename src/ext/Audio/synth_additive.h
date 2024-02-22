@@ -167,27 +167,21 @@ class SequenceInterpolator {
     // Constructor: takes a list of control points
     SequenceInterpolator() {
         for (int i = 0; i < M; i++) {
-            points[i].t = i * (200 * 220);
+            points[i].t = (200 * 220);
             points[i].a[0] = 0.5f;
         }
     }
 
     // Returns the next interpolated amplitude array
     float* next() {
-      // If the index is out of bounds, return the last amplitude array
-      if (index >= points.size() - 1) {
-        //return points.back().a;
-        index = 0; // loop
-        t = 0;
-      }
-
       // Get the current and next control points
-      ControlPoint<N> p1 = points[index];
-      ControlPoint<N> p2 = points[index + 1];
+      ControlPoint<N> & p1 = points[index];
+      ControlPoint<N> & p2 = points[(index + 1) % points.size()]; // use modulo to loop back to the first point
 
       // If the current time is equal to the next point's time, increment the index and return the next point's amplitude array
       if (t == p2.t) {
-        index++;
+        t = 0;
+        index = (index + 1) % points.size(); // use modulo to loop back to the first point
         for (int i = 0; i < N; i++) {
           a[i] = p2.a[i];
         }
@@ -195,9 +189,8 @@ class SequenceInterpolator {
       }
 
       // Otherwise, perform linear interpolation between the two points for each element of the amplitude array
-      // a[i] = a1[i] + (a2[i] - a1[i]) * (t - t1) / (t2 - t1)
       for (int i = 0; i < N; i++) {
-        a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * (t - p1.t) / (p2.t - p1.t);
+        a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * (t) / p2.t;
       }
 
       // Increment the current time by 1
