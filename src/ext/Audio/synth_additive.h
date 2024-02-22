@@ -153,19 +153,21 @@ class HighFrequencyInterpolator {
     }
 };
 
-
 // A class to perform linear interpolation between control points
 template <int N, int M> // the length of the amplitude array
 class SequenceInterpolator {
   private:
-    std::array<ControlPoint<N>, M> points {}; // the list of control points
-    int index = 0; // the current index of the point
-    int t = 0; // the current time
+    static const ControlPoint<N> ZeroPoint;
+
+    std::array<ControlPoint<N>, M> points{}; // the list of control points
+    int index = 0;                           // the current index of the point
+    int t = 0;                               // the current time
+    int zeroTarget = 0;
+    float lastVals[N];
 
   public:
     float a[N]; // the current amplitude array
 
-    // Constructor: takes a list of control points
     SequenceInterpolator() {
         for (int i = 0; i < M; i++) {
             points[i].t = (200 * 44);
@@ -173,37 +175,71 @@ class SequenceInterpolator {
         }
     }
 
-    // Returns the next interpolated amplitude array
-    float* next() {
-      // Get the current and next control points
-      ControlPoint<N> & p1 = points[index];
-      ControlPoint<N> & p2 = points[(index + 1) % points.size()];
-
-      if (t >= p1.t) {
-        t = 0;
-        index = (index + 1) % points.size(); 
-        for (int i = 0; i < N; i++) {
-          a[i] = p2.a[i];
+    /// interpolate from current position to zero.
+    /// @param ticks how many ticks to reach zero?
+    void zero(int ticks) {
+        if (zeroTarget) {
+            return; // already going to zero
         }
-        return a;
-      }
-
-      // Otherwise, perform linear interpolation between the two points for each element of the amplitude array
-      float tPt = (float) t / p1.t;
-      for (int i = 0; i < N; i++) {
-        a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * tPt;
-      }
-
-      // Increment the current time by 1
-      t++;
-
-      // Return the interpolated amplitude array
-      return a;
+        std::copy(a, a + N, lastVals);
+        zeroTarget = ticks;
+        t = 0;
     }
 
-    ControlPoint<N>& operator[](size_t i) { return points[i]; }
+    // Returns the next interpolated amplitude array
+    float *next() {
+        ControlPoint<N> &p1 = points[index];
+
+        if (zeroTarget) {
+            if (t > zeroTarget) {
+                return a;
+            }
+
+            float tZero = (float) t / zeroTarget;
+            for (int i = 0; i < N; i++) {
+                a[i] = lastVals[i] + (ZeroPoint.a[i] - lastVals.a[i]) * tZero;
+            }
+
+            t++;
+            return a;
+        }
+
+        ControlPoint<N> &p2 = points[(index + 1) % points.size()];
+
+        // zero-to-negative values mean "stay here"
+        if (p1.t <= 0) {
+            for (int i = 0; i < N; i++) {
+                a[i] = p1.a[i];
+            }
+            return a;            
+        }
+
+        if (t >= p1.t) {
+            t = 0;
+            index = (index + 1) % points.size();
+            for (int i = 0; i < N; i++) {
+                a[i] = p2.a[i];
+            }
+            return a;
+        }
+
+        float tPt = (float) t / p1.t;
+        for (int i = 0; i < N; i++) {
+            a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * tPt;
+        }
+
+        // Increment the current time by 1
+        t++;
+
+        // Return the interpolated amplitude array
+        return a;
+    }
+
+    ControlPoint<N> &operator[](size_t i) { return points[i]; }
 };
 
+template <int N, int M>
+const ControlPoint<N> SequenceInterpolator<N, M>::ZeroPoint {};
 
 class AudioSynthOscBank : public AudioStream {
 public:

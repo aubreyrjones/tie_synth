@@ -181,7 +181,7 @@ struct BankWaveEditor : public Screen {
 
         main_oled.setCursor(0, 0);
         main_oled.print(selectedTimepoint);
-        main_oled.print(" Delay: ");
+        main_oled.print(" Duration:");
         if (editingDelay) {
             main_oled.setTextColor(colors::cornflowerblue, colors::black);
         }
