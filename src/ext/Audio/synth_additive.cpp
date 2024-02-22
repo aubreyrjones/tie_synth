@@ -329,6 +329,13 @@ void AudioSynthOscBank::update() {
     if (!block) return;
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
+        auto interpolatedVoice = voiceInterpolator.next();
+
+        for (int i = 0; i < bankSize; i++) {
+            voice.amplitudes[i] = interpolatedVoice[i];
+            voice.phaseOffsets[i] = interpolatedVoice[i + bankSize];
+        }
+
         float s = 0;
         for (int j = 0; j < nBanks; j++) {
             banks[j].update();

@@ -9,7 +9,7 @@
 namespace audio {
 
 struct AdditiveSynth : public Synth {
-    Control<float> spectralMix {"Mix.Spect", 1, {0, 2}, [this](float g) { add_mixer.gain(0, g); }};
+    Control<float> spectralMix {"Mix.Spect", 0, {0, 2}, [this](float g) { add_mixer.gain(0, g); }};
     Control<float> banksMix {"Mix.Banks", 1, {0, 2}, [this](float g) { add_mixer.gain(1, g); }};
 
     Control<float> frequency {"Freq.", 172, {1, 20000}, [this](float f) {

@@ -165,6 +165,7 @@ std::array<PartialEditor, (AudioSynthAdditive::partial_table_size / 2) / 128> pa
 
 
 struct BankWaveEditor : public Screen {
+    int selectedTimepoint = 0;
     int selectedHarmonic = 0;
 
     BankWaveEditor() : Screen() {}
@@ -176,6 +177,9 @@ struct BankWaveEditor : public Screen {
         if (!dirty) return;
 
         main_oled.fillScreen(0); // clear the screen
+
+        main_oled.setCursor(0, 0);
+        main_oled.print(selectedTimepoint);
 
         int partial = 0;
 
@@ -191,9 +195,9 @@ struct BankWaveEditor : public Screen {
                 constexpr auto boxWidth = 128 / AudioSynthOscBank::bankSize;
                 constexpr auto innerWidth = boxWidth - 2;
 
-                auto const& voice = audio::as_module.bankVoice();
-                auto amp = voice.amplitudes[i];
-                auto phase = voice.phaseOffsets[i] / 4294967296.f;
+                auto & voice = audio::as_module.bankVoice();
+                auto amp = voice[selectedTimepoint][i];
+                auto phase = voice[selectedTimepoint][i + AudioSynthOscBank::bankSize] / 4294967296.f;
 
                 if (partial == selectedHarmonic) 
                     main_oled.drawRect(i * boxWidth, y, boxWidth, rowHeight, colors::cornflowerblue);
@@ -211,10 +215,32 @@ struct BankWaveEditor : public Screen {
         dirty = false;
     }
 
+    virtual bool handleInput(InputEvent const& ev) override {
+        if (Screen::handleInput(ev)) return true;
+
+        if (ev.trans == InputTransition::RELEASE) {
+            if (ev.in == Input::NAV_SOUTH) {
+                selectedTimepoint = (selectedTimepoint + 1) % AudioSynthOscBank::nBanks;
+                sully();
+                return true;
+            }
+            else if ( ev.in == Input::NAV_NORTH) {
+                selectedTimepoint--;
+                if (selectedTimepoint < 0) {
+                    selectedTimepoint = AudioSynthOscBank::nBanks - 1;
+                }
+                sully();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     virtual void passInputToWidget(InputEvent const& event) override {
         auto & voice = audio::as_module.bankVoice();
-        auto & amp = voice.amplitudes[selectedHarmonic];
-        auto & phase = voice.phaseOffsets[selectedHarmonic];
+        auto & amp = voice[selectedTimepoint][selectedHarmonic];
+        auto & phase = voice[selectedTimepoint][selectedHarmonic + AudioSynthOscBank::bankSize];
 
         if (event.in == Input::RIGHT_ROTATE) {
             if (event.trans == InputTransition::DECR) {
@@ -234,9 +260,15 @@ struct BankWaveEditor : public Screen {
         if (event.in == Input::LEFT_ROTATE) {
             if (event.trans == InputTransition::DECR) {
                 phase -= phaseIncr;
+                if (phase < 0) {
+                    phase = 4294967296;
+                }
             }
             else {
                 phase += phaseIncr;
+                if (phase >= 4294967296) {
+                    phase = 0;
+                }
             }
         }
         else if (event.in == Input::LEFT_PUSH && event.trans == InputTransition::RELEASE) {

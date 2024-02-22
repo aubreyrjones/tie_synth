@@ -100,6 +100,13 @@ template <int N> // a template parameter for the size of the amplitude array
 struct ControlPoint {
   int t; // the integer sample time index of the control point
   float a[N]; // the vector of N amplitudes of the control point
+
+  ControlPoint() {
+    t = 0;
+    std::fill(a, a + N, 0);
+  }
+
+  float& operator[](size_t i) { return a[i]; }
 };
 
 // A class to perform high-frequency interpolation between control points
@@ -147,6 +154,63 @@ class HighFrequencyInterpolator {
 };
 
 
+// A class to perform linear interpolation between control points
+template <int N, int M> // the length of the amplitude array
+class SequenceInterpolator {
+  private:
+    std::array<ControlPoint<N>, M> points {}; // the list of control points
+    int index = 0; // the current index of the point
+    int t = 0; // the current time
+    float a[N]; // the current amplitude array
+
+  public:
+    // Constructor: takes a list of control points
+    SequenceInterpolator() {
+        for (int i = 0; i < M; i++) {
+            points[i].t = i * (200 * 220);
+            points[i].a[0] = 0.5f;
+        }
+    }
+
+    // Returns the next interpolated amplitude array
+    float* next() {
+      // If the index is out of bounds, return the last amplitude array
+      if (index >= points.size() - 1) {
+        //return points.back().a;
+        index = 0; // loop
+        t = 0;
+      }
+
+      // Get the current and next control points
+      ControlPoint<N> p1 = points[index];
+      ControlPoint<N> p2 = points[index + 1];
+
+      // If the current time is equal to the next point's time, increment the index and return the next point's amplitude array
+      if (t == p2.t) {
+        index++;
+        for (int i = 0; i < N; i++) {
+          a[i] = p2.a[i];
+        }
+        return a;
+      }
+
+      // Otherwise, perform linear interpolation between the two points for each element of the amplitude array
+      // a[i] = a1[i] + (a2[i] - a1[i]) * (t - t1) / (t2 - t1)
+      for (int i = 0; i < N; i++) {
+        a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * (t - p1.t) / (p2.t - p1.t);
+      }
+
+      // Increment the current time by 1
+      t++;
+
+      // Return the interpolated amplitude array
+      return a;
+    }
+
+    ControlPoint<N>& operator[](size_t i) { return points[i]; }
+};
+
+
 class AudioSynthOscBank : public AudioStream {
 public:
     static constexpr auto nBanks = 4;
@@ -187,8 +251,7 @@ protected:
     /// @brief The voice profile we're playing.
     VoicePrototype voice {};
 
-    /// @brief Interpolator for voice partials.
-    HighFrequencyInterpolator<bankSize, nControlPoints> voiceInterpolator {};
+    SequenceInterpolator<bankSize * 2, nControlPoints> voiceInterpolator {};
 
     bool _debug = false;
 
@@ -207,7 +270,7 @@ public:
 
     void debug(bool d) { _debug = d; }
 
-    VoicePrototype& getVoice() { return voice; }
+    decltype(voiceInterpolator)& getVoice() { return voiceInterpolator; }
 
     void previewVoice(float *out, int nSamples);
 
