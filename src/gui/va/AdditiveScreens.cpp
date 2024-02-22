@@ -260,6 +260,8 @@ struct BankWaveEditor : public Screen {
 
     virtual bool hasScope() override { return true; }
 
+    int offset = 0;
+
     virtual void drawScope() override {
         float tempBuffer[128];
         oscbank1.previewVoice(tempBuffer, 128);

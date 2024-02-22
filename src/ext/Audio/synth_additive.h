@@ -14,6 +14,12 @@ static constexpr auto systemNyquistFrequency = AUDIO_SAMPLE_RATE_EXACT / 2.f;
 
 class AudioSynthAdditive;
 
+
+class Grain {
+
+};
+
+
 struct GrainEvent : public TimerEventInterface {
     AudioSynthAdditive *synth;
 
@@ -89,11 +95,63 @@ public:
     virtual void update(void) override;
 };
 
+// A struct to store a control point as a pair of time and a vector of amplitudes
+template <int N> // a template parameter for the size of the amplitude array
+struct ControlPoint {
+  int t; // the integer sample time index of the control point
+  float a[N]; // the vector of N amplitudes of the control point
+};
+
+// A class to perform high-frequency interpolation between control points
+template <int N, int M> // a template parameter for the size of the amplitude array, and the number of points in the sequence
+class HighFrequencyInterpolator {
+  private:
+    float delta_a[4][N]; // a static array of delta-a values for each span and each amplitude
+    int offset[4]; // a static array of sample step offsets for each span
+    int span; // the current span index
+    int step; // the current step index
+  public:
+    // A constructor that takes a buffer of control points and a sample rate and computes the delta-a and offset arrays
+    void load(ControlPoint<N>* buffer, int sample_rate) {
+      // loop through the control points and compute the delta-a and offset values
+      for (int i = 0; i < (M - 1); i++) {
+        // loop through the N amplitudes and compute the delta-a for each one
+        for (int j = 0; j < N; j++) {
+          // delta-a is the change in amplitude divided by the number of steps in the span
+          delta_a[i][j] = (buffer[i+1].a[j] - buffer[i].a[j]) / (buffer[i+1].t - buffer[i].t);
+        }
+        // offset is the difference between the sample time index and the actual time index of the control point
+        offset[i] = buffer[i].t - i * sample_rate;
+      }
+      // initialize the span and step values
+      span = 0;
+      step = 0;
+    }
+
+    // A method that returns the next delta-a vector
+    float* next() {
+      // if the span index is out of bounds, return a zero vector
+      if (span >= 4) {
+        static float zero[N] = {0}; // a static zero vector
+        return zero;
+      }
+      // if the step index is equal to the offset, increment the span and reset the step
+      if (step == offset[span]) {
+        span++;
+        step = 0;
+      }
+      // increment the step and return the delta-a vector
+      step++;
+      return delta_a[span];
+    }
+};
+
 
 class AudioSynthOscBank : public AudioStream {
 public:
     static constexpr auto nBanks = 4;
     static constexpr auto bankSize = 16;
+    static constexpr auto nControlPoints = 5;
 
     struct VoicePrototype {
         std::array<float, bankSize> amplitudes {};
@@ -128,6 +186,9 @@ protected:
 
     /// @brief The voice profile we're playing.
     VoicePrototype voice {};
+
+    /// @brief Interpolator for voice partials.
+    HighFrequencyInterpolator<bankSize, nControlPoints> voiceInterpolator {};
 
     bool _debug = false;
 
