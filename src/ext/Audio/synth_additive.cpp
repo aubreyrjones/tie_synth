@@ -318,7 +318,8 @@ float AudioSynthOscBank::sample(Bank &b) {
     float accum = 0;
 
     for (int i = 0; i < b.cutoff; i++) {
-        accum += voice.amplitudes[i] * taylorf(b.accumulators[i] + voice.phaseOffsets[i]);
+        //accum += voice.amplitudes[i] * taylorf(b.accumulators[i] + voice.phaseOffsets[i]);
+        accum += voiceInterpolator.a[i] * taylorf(b.accumulators[i] + voiceInterpolator.a[i + bankSize]);
     }
 
     return accum;
@@ -329,12 +330,7 @@ void AudioSynthOscBank::update() {
     if (!block) return;
 
     for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-        auto interpolatedVoice = voiceInterpolator.next();
-
-        for (int i = 0; i < bankSize; i++) {
-            voice.amplitudes[i] = interpolatedVoice[i];
-            voice.phaseOffsets[i] = interpolatedVoice[i + bankSize];
-        }
+        voiceInterpolator.next();
 
         float s = 0;
         for (int j = 0; j < nBanks; j++) {
