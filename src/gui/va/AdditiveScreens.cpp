@@ -167,6 +167,7 @@ std::array<PartialEditor, (AudioSynthAdditive::partial_table_size / 2) / 128> pa
 struct BankWaveEditor : public Screen {
     int selectedTimepoint = 0;
     int selectedHarmonic = 0;
+    bool editingDelay = false;
 
     BankWaveEditor() : Screen() {}
 
@@ -180,6 +181,16 @@ struct BankWaveEditor : public Screen {
 
         main_oled.setCursor(0, 0);
         main_oled.print(selectedTimepoint);
+        main_oled.print(" Delay: ");
+        if (editingDelay) {
+            main_oled.setTextColor(colors::cornflowerblue, colors::black);
+        }
+        else {
+            main_oled.setTextColor(colors::white);
+        }
+        main_oled.print(audio::as_module.bankVoice()[selectedTimepoint].t / 44.f);
+
+        main_oled.setTextColor(colors::white);
 
         int partial = 0;
 
@@ -199,7 +210,7 @@ struct BankWaveEditor : public Screen {
                 auto amp = voice[selectedTimepoint][i];
                 auto phase = voice[selectedTimepoint][i + AudioSynthOscBank::bankSize] / 4294967296.f;
 
-                if (partial == selectedHarmonic) 
+                if (!editingDelay && partial == selectedHarmonic) 
                     main_oled.drawRect(i * boxWidth, y, boxWidth, rowHeight, colors::cornflowerblue);
 
                 int boxHeight = amp * (halfHeight - 1);
@@ -220,15 +231,27 @@ struct BankWaveEditor : public Screen {
 
         if (ev.trans == InputTransition::RELEASE) {
             if (ev.in == Input::NAV_SOUTH) {
-                selectedTimepoint = (selectedTimepoint + 1) % AudioSynthOscBank::nBanks;
+                selectedTimepoint = (selectedTimepoint + 1) % AudioSynthOscBank::nControlPoints;
                 sully();
                 return true;
             }
             else if ( ev.in == Input::NAV_NORTH) {
                 selectedTimepoint--;
                 if (selectedTimepoint < 0) {
-                    selectedTimepoint = AudioSynthOscBank::nBanks - 1;
+                    selectedTimepoint = AudioSynthOscBank::nControlPoints - 1;
                 }
+                sully();
+                return true;
+            }
+            else if (ev.in == Input::NAV_CENTER) {
+                editingDelay = false;
+                sully();
+                return true;
+            }
+        }
+        else if (ev.trans == InputTransition::PRESS) {
+            if (ev.in == Input::NAV_CENTER) {
+                editingDelay = true;
                 sully();
                 return true;
             }
@@ -238,6 +261,22 @@ struct BankWaveEditor : public Screen {
     }
 
     virtual void passInputToWidget(InputEvent const& event) override {
+
+        if (editingDelay) {
+            if (event.in == Input::LEFT_ROTATE || event.in == Input::RIGHT_ROTATE) {
+                int & t = audio::as_module.bankVoice()[selectedTimepoint].t;
+                if (event.trans == InputTransition::INCR) {
+                    t += 440;
+                }
+                else {
+                    t -= 440;
+                    if (t < 440) { t = 440; }
+                }
+                sully();
+            }
+            return;
+        }
+
         auto & voice = audio::as_module.bankVoice();
         auto & amp = voice[selectedTimepoint][selectedHarmonic];
         auto & phase = voice[selectedTimepoint][selectedHarmonic + AudioSynthOscBank::bankSize];

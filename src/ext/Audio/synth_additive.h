@@ -161,7 +161,6 @@ class SequenceInterpolator {
     std::array<ControlPoint<N>, M> points {}; // the list of control points
     int index = 0; // the current index of the point
     int t = 0; // the current time
-    
 
   public:
     float a[N]; // the current amplitude array
@@ -169,7 +168,7 @@ class SequenceInterpolator {
     // Constructor: takes a list of control points
     SequenceInterpolator() {
         for (int i = 0; i < M; i++) {
-            points[i].t = (200 * 220);
+            points[i].t = (200 * 44);
             points[i].a[0] = 0.5f;
         }
     }
@@ -178,12 +177,11 @@ class SequenceInterpolator {
     float* next() {
       // Get the current and next control points
       ControlPoint<N> & p1 = points[index];
-      ControlPoint<N> & p2 = points[(index + 1) % points.size()]; // use modulo to loop back to the first point
+      ControlPoint<N> & p2 = points[(index + 1) % points.size()];
 
-      // If the current time is equal to the next point's time, increment the index and return the next point's amplitude array
-      if (t >= p2.t) {
+      if (t >= p1.t) {
         t = 0;
-        index = (index + 1) % points.size(); // use modulo to loop back to the first point
+        index = (index + 1) % points.size(); 
         for (int i = 0; i < N; i++) {
           a[i] = p2.a[i];
         }
@@ -191,8 +189,9 @@ class SequenceInterpolator {
       }
 
       // Otherwise, perform linear interpolation between the two points for each element of the amplitude array
+      float tPt = (float) t / p1.t;
       for (int i = 0; i < N; i++) {
-        a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * (t) / p2.t;
+        a[i] = p1.a[i] + (p2.a[i] - p1.a[i]) * tPt;
       }
 
       // Increment the current time by 1
